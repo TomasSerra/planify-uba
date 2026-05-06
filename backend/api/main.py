@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
+import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+
+log = logging.getLogger("main")
 
 from .auth import ClerkUser, optional_user
 from .db import pool
@@ -53,6 +57,11 @@ def _fetch_obliga_map(conn, comision_ids: list[int]) -> dict[int, list[CursoSumm
 async def lifespan(app: FastAPI):
     pool.open()
     pool.wait()
+    if os.environ.get("MP_SKIP_SIGNATURE") == "1":
+        log.warning(
+            "MP_SKIP_SIGNATURE=1 — verificación de firma del webhook DESACTIVADA. "
+            "Solo aceptable en dev. Sacar en prod."
+        )
     yield
     pool.close()
 
@@ -64,9 +73,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
+if (_app_url := os.environ.get("APP_URL")) and _app_url not in _allowed_origins:
+    _allowed_origins.append(_app_url.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
