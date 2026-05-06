@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 log = logging.getLogger("main")
 
-from .auth import ClerkUser, optional_user
+from .auth import AuthUser, optional_user
 from .db import pool
 from .models import (
     CatedraDetail,
@@ -301,7 +301,7 @@ def _request_uses_filters(req: PlanRequest) -> bool:
 @app.post("/planes", response_model=PlanResponse)
 def post_planes(
     req: PlanRequest,
-    user: ClerkUser | None = Depends(optional_user),
+    user: AuthUser | None = Depends(optional_user),
 ) -> PlanResponse:
     with pool.connection() as conn:
         if _request_uses_filters(req):

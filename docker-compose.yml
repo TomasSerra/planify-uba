@@ -24,7 +24,8 @@ services:
     container_name: horarios-api
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/horarios
-      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       MP_SKIP_SIGNATURE: ${MP_SKIP_SIGNATURE:-}
@@ -65,7 +66,9 @@ services:
     container_name: horarios-frontend
     environment:
       VITE_API_URL: http://localhost:8000
-      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+      VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
+      VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
+      VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
     ports:
       - "5173:5173"
     volumes:

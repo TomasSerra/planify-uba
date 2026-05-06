@@ -12,7 +12,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from .auth import ClerkUser, current_user
+from .auth import AuthUser, current_user
 from .db import pool
 
 log = logging.getLogger("pagos")
@@ -48,7 +48,7 @@ class CheckoutResponse(BaseModel):
 
 
 @router.post("/checkout", response_model=CheckoutResponse)
-def post_checkout(user: ClerkUser = Depends(current_user)) -> CheckoutResponse:
+def post_checkout(user: AuthUser = Depends(current_user)) -> CheckoutResponse:
     external_reference = uuid.uuid4().hex
     body = {
         "items": [

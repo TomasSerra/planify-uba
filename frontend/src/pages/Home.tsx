@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Sparkles,
   Loader2,
@@ -7,16 +7,15 @@ import {
   Check,
   Gem,
   LogIn,
+  LogOut,
 } from "lucide-react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-  useAuth,
-  useUser,
-} from "@clerk/clerk-react";
+import { useAuth0 } from "@auth0/auth0-react";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -63,15 +62,15 @@ function PaywallDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { getToken } = useAuth();
-  const { isSignedIn } = useUser();
+  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } =
+    useAuth0();
   const showAlert = useAlert();
   const [loading, setLoading] = useState(false);
 
   async function pagar() {
     setLoading(true);
     try {
-      const token = await getToken();
+      const token = await getAccessTokenSilently();
       if (!token) throw new Error("No token");
       const { init_point } = await api.postCheckout(token);
       window.location.href = init_point;
@@ -110,7 +109,7 @@ function PaywallDialog({
           ))}
         </ul>
 
-        {isSignedIn ? (
+        {isAuthenticated ? (
           <Button
             size="lg"
             className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
@@ -125,15 +124,14 @@ function PaywallDialog({
             Pagar ${formattedPrice} · {SUBSCRIPTION_MONTHS} meses
           </Button>
         ) : (
-          <SignInButton mode="modal">
-            <Button
-              size="lg"
-              className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            >
-              <LogIn className="size-4" />
-              Iniciar sesión
-            </Button>
-          </SignInButton>
+          <Button
+            size="lg"
+            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+            onClick={() => loginWithRedirect()}
+          >
+            <LogIn className="size-4" />
+            Iniciar sesión
+          </Button>
         )}
       </DialogContent>
     </Dialog>
@@ -165,17 +163,27 @@ function PayChip() {
 }
 
 function UserMenu() {
-  const { user, isLoaded } = useUser();
+  const { user, isAuthenticated, isLoading, loginWithRedirect, logout } =
+    useAuth0();
   const { isPaid, validUntil } = useSubscription();
-  const email = user?.primaryEmailAddress?.emailAddress ?? "";
-  const containerRef = useRef<HTMLDivElement>(null);
+  const email = user?.email ?? "";
+  const initial = email.slice(0, 1).toUpperCase() || "?";
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="flex items-center gap-3">
         <Skeleton className="h-9 w-28 rounded-md" />
         <Skeleton className="h-9 w-9 rounded-full" />
       </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Button size="sm" onClick={() => loginWithRedirect()}>
+        <LogIn className="size-4" />
+        Iniciar sesión
+      </Button>
     );
   }
 
@@ -187,50 +195,60 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-3">
-      <SignedOut>
-        <SignInButton mode="modal">
-          <Button size="sm">
-            <LogIn className="size-4" />
-            Iniciar sesión
-          </Button>
-        </SignInButton>
-      </SignedOut>
-      <SignedIn>
-        <PayChip />
-        <div
-          ref={containerRef}
-          onClick={(e) => {
-            const trigger = containerRef.current?.querySelector(
-              ".cl-userButtonTrigger"
-            ) as HTMLElement | null;
-            if (trigger && !trigger.contains(e.target as Node)) {
-              trigger.click();
-            }
-          }}
-          className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-background py-1 pl-3 pr-1 transition-colors hover:bg-accent"
-        >
-          <div className="hidden flex-col leading-tight sm:flex">
-            <span className="text-xs text-foreground">{email}</span>
-            {isPaid && validUntilFormatted && (
-              <span className="text-[10px] font-medium text-[#EC990B]">
-                Pro hasta {validUntilFormatted}
+      <PayChip />
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-background py-1 pl-3 pr-1 transition-colors hover:bg-accent"
+          >
+            <div className="hidden flex-col leading-tight sm:flex text-left">
+              <span className="text-xs text-foreground">{email}</span>
+              {isPaid && validUntilFormatted && (
+                <span className="text-[10px] font-medium text-[#EC990B]">
+                  Pro hasta {validUntilFormatted}
+                </span>
+              )}
+            </div>
+            <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              {user?.picture ? (
+                <img
+                  src={user.picture}
+                  alt={email}
+                  className="size-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                initial
+              )}
+            </span>
+            {isPaid && (
+              <span
+                className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#EC990B] text-white shadow-sm ring-2 ring-card"
+                title="Suscripción Pro activa"
+              >
+                <Gem className="size-3" strokeWidth={2.5} />
               </span>
             )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56 p-2">
+          <div className="border-b px-2 py-1.5 text-xs text-muted-foreground">
+            {email}
           </div>
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{ elements: { avatarBox: "h-8 w-8" } }}
-          />
-          {isPaid && (
-            <span
-              className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#EC990B] text-white shadow-sm ring-2 ring-card"
-              title="Suscripción Pro activa"
-            >
-              <Gem className="size-3" strokeWidth={2.5} />
-            </span>
-          )}
-        </div>
-      </SignedIn>
+          <button
+            type="button"
+            onClick={() =>
+              logout({
+                logoutParams: { returnTo: window.location.origin },
+              })
+            }
+            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+          >
+            <LogOut className="size-4" /> Cerrar sesión
+          </button>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
@@ -239,7 +257,7 @@ const ALL_DIAS: string[] = [...DIAS];
 
 export function Home() {
   const { isPaid, isLoading: subLoading } = useSubscription();
-  const { getToken } = useAuth();
+  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const showAlert = useAlert();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const openPaywall = () => setPaywallOpen(true);
@@ -284,7 +302,9 @@ export function Home() {
     setPlanIdx(0);
     try {
       const dias_excluidos = ALL_DIAS.filter((d) => !diasPermitidos.includes(d));
-      const token = await getToken().catch(() => null);
+      const token = isAuthenticated
+        ? await getAccessTokenSilently().catch(() => null)
+        : null;
       const data = await api.postPlanes(
         {
           materias: materias.map(({ codigo, catedra_id, profesores }) => ({

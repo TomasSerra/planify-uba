@@ -1,27 +1,30 @@
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth0 } from "@auth0/auth0-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 
 export function useSubscription() {
-  const { user, isLoaded: userLoaded } = useUser();
-  const { getToken } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: userLoading,
+    getAccessTokenSilently,
+  } = useAuth0();
 
   const query = useQuery({
-    queryKey: ["subscription", user?.id],
-    enabled: userLoaded && !!user,
+    queryKey: ["subscription", user?.sub],
+    enabled: !userLoading && isAuthenticated,
     queryFn: async () => {
-      const token = await getToken();
-      if (!token) throw new Error("No token");
+      const token = await getAccessTokenSilently();
       return api.getSubscription(token);
     },
   });
 
-  if (!userLoaded) {
+  if (userLoading) {
     // Aún no sabemos si hay sesión: marcar como cargando para que el FE
     // pueda mostrar skeletons en vez del estado "free" prematuramente.
     return { isPaid: false, validUntil: null as Date | null, isLoading: true };
   }
-  if (!user) {
+  if (!isAuthenticated) {
     return { isPaid: false, validUntil: null as Date | null, isLoading: false };
   }
 

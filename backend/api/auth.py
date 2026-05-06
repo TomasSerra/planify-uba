@@ -1,23 +1,26 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
 
-import httpx
 import jwt
 from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 from pydantic import BaseModel
 
-CLERK_ISSUER_URL = os.environ.get("CLERK_ISSUER_URL", "").rstrip("/")
+log = logging.getLogger("auth")
+
+AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "").strip()
+AUTH0_AUDIENCE = os.environ.get("AUTH0_AUDIENCE", "").strip()
 JWKS_TTL_SECONDS = 3600
 
 _jwks_client: PyJWKClient | None = None
 _jwks_loaded_at: float = 0.0
 
 
-class ClerkUser(BaseModel):
+class AuthUser(BaseModel):
     id: str
 
 
@@ -25,9 +28,11 @@ def _get_jwks_client() -> PyJWKClient:
     global _jwks_client, _jwks_loaded_at
     now = time.monotonic()
     if _jwks_client is None or (now - _jwks_loaded_at) > JWKS_TTL_SECONDS:
-        if not CLERK_ISSUER_URL:
-            raise HTTPException(status_code=500, detail="CLERK_ISSUER_URL no configurada")
-        _jwks_client = PyJWKClient(f"{CLERK_ISSUER_URL}/.well-known/jwks.json")
+        if not AUTH0_DOMAIN:
+            raise HTTPException(status_code=500, detail="AUTH0_DOMAIN no configurada")
+        if not AUTH0_AUDIENCE:
+            raise HTTPException(status_code=500, detail="AUTH0_AUDIENCE no configurada")
+        _jwks_client = PyJWKClient(f"https://{AUTH0_DOMAIN}/.well-known/jwks.json")
         _jwks_loaded_at = now
     return _jwks_client
 
@@ -40,14 +45,15 @@ def _decode_token(token: str) -> dict[str, Any]:
             token,
             signing_key,
             algorithms=["RS256"],
-            issuer=CLERK_ISSUER_URL,
-            options={"verify_aud": False},
+            issuer=f"https://{AUTH0_DOMAIN}/",
+            audience=AUTH0_AUDIENCE,
         )
     except jwt.PyJWTError as exc:
-        raise HTTPException(status_code=401, detail=f"Token inválido: {exc}") from exc
+        log.warning("JWT inválido: %s", exc)
+        raise HTTPException(status_code=401, detail="Token inválido") from exc
 
 
-def current_user(authorization: str = Header(...)) -> ClerkUser:
+def current_user(authorization: str = Header(...)) -> AuthUser:
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authorization header inválido")
     token = authorization.removeprefix("Bearer ").strip()
@@ -55,10 +61,10 @@ def current_user(authorization: str = Header(...)) -> ClerkUser:
     sub = payload.get("sub")
     if not sub:
         raise HTTPException(status_code=401, detail="JWT sin sub")
-    return ClerkUser(id=sub)
+    return AuthUser(id=sub)
 
 
-def optional_user(authorization: str | None = Header(default=None)) -> ClerkUser | None:
+def optional_user(authorization: str | None = Header(default=None)) -> AuthUser | None:
     if not authorization:
         return None
     return current_user(authorization)

@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from .auth import ClerkUser, current_user
+from .auth import AuthUser, current_user
 from .db import pool
 
 
@@ -38,7 +38,7 @@ router = APIRouter()
 
 
 @router.get("/me/subscription", response_model=SubscriptionState)
-def me_subscription(user: ClerkUser = Depends(current_user)) -> SubscriptionState:
+def me_subscription(user: AuthUser = Depends(current_user)) -> SubscriptionState:
     with pool.connection() as conn:
         valid_until = get_active_until(conn, user.id)
     return SubscriptionState(active=valid_until is not None, valid_until=valid_until)
