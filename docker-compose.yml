@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: horarios-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: horarios
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d horarios"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: horarios-api
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/horarios
+      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_SKIP_SIGNATURE: ${MP_SKIP_SIGNATURE:-}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      APP_URL_BACKEND: ${APP_URL_BACKEND:-http://localhost:8000}
+      SUBSCRIPTION_PRICE_ARS: ${SUBSCRIPTION_PRICE_ARS:-5000}
+      SUBSCRIPTION_DAYS: ${SUBSCRIPTION_DAYS:-90}
+      UVICORN_RELOAD: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/api:/app/api
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scraper:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: horarios-scraper
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/horarios
+      SCRAPER_DELAY_SECONDS: "0.5"
+      SCRAPER_USER_AGENT: "OrganizacionHorarios/0.1 (tomas@goheadlands.com)"
+    command: python -m scraper.main
+    volumes:
+      - ./backend/scraper:/app/scraper
+    profiles: ["scrape"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: horarios-frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

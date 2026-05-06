@@ -1,0 +1,309 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from contextlib import asynccontextmanager
+from typing import Literal
+
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+from .auth import ClerkUser, optional_user
+from .db import pool
+from .models import (
+    CatedraDetail,
+    CatedraOpcion,
+    CatedraSummary,
+    CursoListItem,
+    CursoResponse,
+    CursoSummary,
+    HealthResponse,
+    MateriaDetail,
+    MateriaListItem,
+    MateriaOpciones,
+)
+from .pagos import router as pagos_router
+from .planes import PlanRequest, PlanResponse, armar_planes
+from .subs import has_active_subscription, router as subs_router
+
+
+def _fetch_obliga_map(conn, comision_ids: list[int]) -> dict[int, list[CursoSummary]]:
+    """Devuelve {comision_id: [CursoSummary, ...]} para el set de comisiones dado."""
+    if not comision_ids:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT co.comision_id,
+               t.id, t.tipo::text AS tipo, t.codigo, t.dia,
+               t.hora_inicio, t.hora_fin, t.aula
+          FROM comision_obliga co
+          JOIN cursos t ON t.id = co.obliga_a_id
+         WHERE co.comision_id = ANY(%s)
+         ORDER BY t.tipo, t.codigo
+        """,
+        (comision_ids,),
+    ).fetchall()
+    out: dict[int, list[CursoSummary]] = defaultdict(list)
+    for row in rows:
+        comision_id = row.pop("comision_id")
+        out[comision_id].append(CursoSummary(**row))
+    return out
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    pool.open()
+    pool.wait()
+    yield
+    pool.close()
+
+
+app = FastAPI(
+    title="Horarios — Facultad de Psicología (UBA)",
+    description="API para consultar horarios de cátedras.",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(subs_router)
+app.include_router(pagos_router, prefix="/pagos")
+
+
+@app.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    db_status = "ok"
+    try:
+        with pool.connection() as conn:
+            conn.execute("SELECT 1")
+    except Exception as exc:
+        db_status = f"error: {exc!r}"
+    return HealthResponse(status="ok", db=db_status)
+
+
+@app.get("/materias", response_model=list[MateriaListItem])
+def list_materias(
+    q: str | None = Query(None, description="Filtrar por nombre (case-insensitive)"),
+) -> list[MateriaListItem]:
+    sql = """
+        SELECT m.codigo, m.nombre, COUNT(c.id) AS cant_catedras
+          FROM materias m
+          LEFT JOIN catedras c ON c.materia_codigo = m.codigo
+         WHERE %(pattern)s::text IS NULL OR m.nombre ILIKE %(pattern)s
+         GROUP BY m.codigo, m.nombre
+         ORDER BY m.nombre
+    """
+    pattern = f"%{q}%" if q else None
+    with pool.connection() as conn:
+        rows = conn.execute(sql, {"pattern": pattern}).fetchall()
+    return [MateriaListItem(**row) for row in rows]
+
+
+@app.get("/materias/{codigo}", response_model=MateriaDetail)
+def get_materia(codigo: int) -> MateriaDetail:
+    with pool.connection() as conn:
+        materia = conn.execute(
+            "SELECT codigo, nombre FROM materias WHERE codigo = %s",
+            (codigo,),
+        ).fetchone()
+        if materia is None:
+            raise HTTPException(status_code=404, detail="Materia no encontrada")
+        catedras = conn.execute(
+            """
+            SELECT id, numero, titular, cuatrimestre
+              FROM catedras
+             WHERE materia_codigo = %s
+             ORDER BY id
+            """,
+            (codigo,),
+        ).fetchall()
+    return MateriaDetail(
+        codigo=materia["codigo"],
+        nombre=materia["nombre"],
+        catedras=[CatedraSummary(**row) for row in catedras],
+    )
+
+
+@app.get("/materias/{codigo}/opciones", response_model=MateriaOpciones)
+def get_materia_opciones(codigo: int) -> MateriaOpciones:
+    """Devuelve la materia con sus cátedras y, para cada una, los profesores
+    únicos que dictan comisiones (datos necesarios para que el FE permita
+    elegir cátedra y filtrar por profesores antes de armar planes)."""
+    with pool.connection() as conn:
+        materia = conn.execute(
+            "SELECT codigo, nombre FROM materias WHERE codigo = %s",
+            (codigo,),
+        ).fetchone()
+        if materia is None:
+            raise HTTPException(status_code=404, detail="Materia no encontrada")
+        rows = conn.execute(
+            """
+            SELECT ca.id, ca.numero, ca.titular, ca.cuatrimestre,
+                   COALESCE(
+                       array_agg(DISTINCT cu.profesor)
+                         FILTER (WHERE cu.profesor IS NOT NULL),
+                       ARRAY[]::text[]
+                   ) AS profesores
+              FROM catedras ca
+              LEFT JOIN cursos cu ON cu.catedra_id = ca.id AND cu.tipo = 'comision'
+             WHERE ca.materia_codigo = %s
+             GROUP BY ca.id, ca.numero, ca.titular, ca.cuatrimestre
+             ORDER BY ca.id
+            """,
+            (codigo,),
+        ).fetchall()
+    return MateriaOpciones(
+        codigo=materia["codigo"],
+        nombre=materia["nombre"],
+        catedras=[
+            CatedraOpcion(
+                id=r["id"],
+                numero=r["numero"],
+                titular=r["titular"],
+                cuatrimestre=r["cuatrimestre"],
+                profesores=sorted(r["profesores"]),
+            )
+            for r in rows
+        ],
+    )
+
+
+@app.get("/catedras/{catedra_id}", response_model=CatedraDetail)
+def get_catedra(catedra_id: int) -> CatedraDetail:
+    with pool.connection() as conn:
+        catedra = conn.execute(
+            """
+            SELECT c.id, c.materia_codigo, m.nombre AS materia_nombre,
+                   c.numero, c.titular, c.cuatrimestre
+              FROM catedras c
+              JOIN materias m ON m.codigo = c.materia_codigo
+             WHERE c.id = %s
+            """,
+            (catedra_id,),
+        ).fetchone()
+        if catedra is None:
+            raise HTTPException(status_code=404, detail="Cátedra no encontrada")
+        cursos = conn.execute(
+            """
+            SELECT id, catedra_id, tipo::text, codigo, dia,
+                   hora_inicio, hora_fin, profesor, vacantes,
+                   obligatorio, aula, sede, observaciones
+              FROM cursos
+             WHERE catedra_id = %s
+             ORDER BY tipo, LENGTH(codigo), codigo
+            """,
+            (catedra_id,),
+        ).fetchall()
+        comision_ids = [c["id"] for c in cursos if c["tipo"] == "comision"]
+        obliga_map = _fetch_obliga_map(conn, comision_ids)
+    cursos_resp = [
+        CursoResponse(
+            **row,
+            obliga_a=obliga_map.get(row["id"], []) if row["tipo"] == "comision" else None,
+        )
+        for row in cursos
+    ]
+    return CatedraDetail(**catedra, cursos=cursos_resp)
+
+
+@app.get("/cursos", response_model=list[CursoListItem])
+def search_cursos(
+    materia_codigo: int | None = Query(None, description="Filtrar por código de materia"),
+    catedra_id: int | None = Query(None, description="Filtrar por id de cátedra"),
+    tipo: Literal["teorico", "seminario", "comision"] | None = None,
+    dia: str | None = Query(None, description="lunes/martes/.../sabado"),
+    sede: str | None = Query(None, description="Prefijo de aula: HY/IN/SI/AV/EC"),
+    profesor: str | None = Query(None, description="Substring del nombre del profesor"),
+    incluir_obliga: bool = Query(
+        False,
+        description="Si true, popula `obliga_a` en cada comisión",
+    ),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> list[CursoListItem]:
+    sql = """
+        SELECT cu.id, cu.catedra_id, cu.tipo::text, cu.codigo, cu.dia,
+               cu.hora_inicio, cu.hora_fin, cu.profesor, cu.vacantes,
+               cu.obligatorio, cu.aula, cu.sede, cu.observaciones,
+               ca.materia_codigo, m.nombre AS materia_nombre
+          FROM cursos cu
+          JOIN catedras ca ON ca.id = cu.catedra_id
+          JOIN materias m  ON m.codigo = ca.materia_codigo
+         WHERE (%(materia_codigo)s::int IS NULL OR ca.materia_codigo = %(materia_codigo)s)
+           AND (%(catedra_id)s::int IS NULL OR cu.catedra_id = %(catedra_id)s)
+           AND (%(tipo)s::text IS NULL OR cu.tipo::text = %(tipo)s)
+           AND (%(dia)s::text IS NULL OR cu.dia = %(dia)s)
+           AND (%(sede)s::text IS NULL OR cu.sede = %(sede)s)
+           AND (%(profesor_pattern)s::text IS NULL OR cu.profesor ILIKE %(profesor_pattern)s)
+         ORDER BY cu.catedra_id, cu.tipo, LENGTH(cu.codigo), cu.codigo
+         LIMIT %(limit)s OFFSET %(offset)s
+    """
+    params = {
+        "materia_codigo": materia_codigo,
+        "catedra_id": catedra_id,
+        "tipo": tipo,
+        "dia": dia,
+        "sede": sede,
+        "profesor": profesor,
+        "profesor_pattern": f"%{profesor}%" if profesor else None,
+        "limit": limit,
+        "offset": offset,
+    }
+    with pool.connection() as conn:
+        rows = conn.execute(sql, params).fetchall()
+        if incluir_obliga:
+            comision_ids = [r["id"] for r in rows if r["tipo"] == "comision"]
+            obliga_map = _fetch_obliga_map(conn, comision_ids)
+        else:
+            obliga_map = {}
+    return [
+        CursoListItem(
+            **row,
+            obliga_a=(
+                obliga_map.get(row["id"], [])
+                if incluir_obliga and row["tipo"] == "comision"
+                else None
+            ),
+        )
+        for row in rows
+    ]
+
+
+def _request_uses_filters(req: PlanRequest) -> bool:
+    """Detecta si el request usa alguna feature Pro (filtros)."""
+    if req.dias_excluidos or req.franjas_excluidas or req.sedes_permitidas:
+        return True
+    for m in req.materias:
+        if m.catedra_id is not None or m.profesores is not None:
+            return True
+    return False
+
+
+@app.post("/planes", response_model=PlanResponse)
+def post_planes(
+    req: PlanRequest,
+    user: ClerkUser | None = Depends(optional_user),
+) -> PlanResponse:
+    with pool.connection() as conn:
+        if _request_uses_filters(req):
+            is_paid = (
+                user is not None and has_active_subscription(conn, user.id)
+            )
+            if not is_paid:
+                # Si el FE deshabilita los filtros para no-Pro, llegar acá con
+                # filtros == alguien intentando bypassear el paywall.
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Los filtros (días, franjas, sedes, cátedra y "
+                        "profesores) son una función Pro. Suscribite para "
+                        "usarlos."
+                    ),
+                )
+        return armar_planes(conn, req)
