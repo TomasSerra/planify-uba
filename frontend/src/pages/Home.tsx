@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sparkles,
   Loader2,
   AlertCircle,
   CreditCard,
   Check,
+  CheckCircle2,
   Gem,
   LogIn,
   LogOut,
+  XCircle,
 } from "lucide-react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -253,6 +257,159 @@ function UserMenu() {
   );
 }
 
+interface PagoErrorState {
+  status: string | null;
+  statusDetail: string | null;
+}
+
+function PagoErrorDialog({
+  state,
+  onClose,
+}: {
+  state: PagoErrorState | null;
+  onClose: () => void;
+}) {
+  const { getAccessTokenSilently } = useAuth0();
+  const showAlert = useAlert();
+  const [retrying, setRetrying] = useState(false);
+
+  async function reintentar() {
+    setRetrying(true);
+    try {
+      const token = await getAccessTokenSilently();
+      if (!token) throw new Error("No token");
+      const { init_point } = await api.postCheckout(token);
+      window.location.href = init_point;
+    } catch (e) {
+      setRetrying(false);
+      showAlert({
+        variant: "error",
+        title: "No se pudo iniciar el pago",
+        message: (e as Error).message,
+      });
+    }
+  }
+
+  const status = state?.status;
+  const statusDetail = state?.statusDetail;
+  const hasStatus = status && status !== "null";
+  const hasDetail = statusDetail && statusDetail !== "null";
+
+  return (
+    <Dialog open={state !== null} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <div className="flex flex-col items-center pt-2 text-center">
+          <XCircle className="size-12 text-destructive" strokeWidth={1.5} />
+          <DialogHeader className="mt-3 space-y-2 sm:text-center">
+            <DialogTitle className="text-center">
+              El pago no se procesó
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Mercado Pago rechazó la transacción
+              {hasStatus ? ` (${status})` : ""}
+              {hasDetail ? `: ${statusDetail}` : ""}. No se descontó plata.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button
+            onClick={reintentar}
+            disabled={retrying}
+            className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+          >
+            {retrying ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <CreditCard className="size-4" />
+            )}
+            Reintentar pago
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const PAGO_POLL_INTERVAL_MS = 2000;
+const PAGO_MAX_WAIT_MS = 30_000;
+
+function PagoStatusDialog({
+  externalReference,
+  onClose,
+}: {
+  externalReference: string | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [startedAt] = useState(() => Date.now());
+
+  const { data, error } = useQuery({
+    queryKey: ["pago-status", externalReference],
+    queryFn: () => {
+      if (!externalReference) throw new Error("Falta external_reference");
+      return api.getPagoStatus(externalReference);
+    },
+    enabled: !!externalReference,
+    refetchInterval: (q) => {
+      if (q.state.data?.status === "approved") return false;
+      if (Date.now() - startedAt > PAGO_MAX_WAIT_MS) return false;
+      return PAGO_POLL_INTERVAL_MS;
+    },
+  });
+
+  useEffect(() => {
+    if (data?.status === "approved") {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      const t = setTimeout(onClose, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [data?.status, queryClient, onClose]);
+
+  const open = !!externalReference;
+  const timedOut = Date.now() - startedAt > PAGO_MAX_WAIT_MS;
+
+  let icon: React.ReactNode;
+  let title: string;
+  let body: string;
+  if (error) {
+    icon = <AlertCircle className="size-12 text-destructive" strokeWidth={1.5} />;
+    title = "Error confirmando el pago";
+    body = (error as Error).message;
+  } else if (data?.status === "approved") {
+    icon = (
+      <CheckCircle2 className="size-12 text-emerald-600" strokeWidth={1.5} />
+    );
+    title = "¡Listo! Pago acreditado";
+    body = "Ya tenés acceso Pro.";
+  } else if (timedOut) {
+    icon = <AlertCircle className="size-12 text-amber-600" strokeWidth={1.5} />;
+    title = "El pago se está acreditando";
+    body =
+      "Mercado Pago a veces tarda unos minutos. Cuando se acredite, vas a ver el chip Pro en el header.";
+  } else {
+    icon = <Loader2 className="size-12 animate-spin text-primary" strokeWidth={1.5} />;
+    title = "Confirmando tu pago…";
+    body = "Esto puede tardar unos segundos.";
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <div className="flex flex-col items-center pt-2 text-center">
+          {icon}
+          <DialogHeader className="mt-3 space-y-2 sm:text-center">
+            <DialogTitle className="text-center">{title}</DialogTitle>
+            <DialogDescription className="text-center">{body}</DialogDescription>
+          </DialogHeader>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const ALL_DIAS: string[] = [...DIAS];
 
 export function Home() {
@@ -261,6 +418,28 @@ export function Home() {
   const showAlert = useAlert();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const openPaywall = () => setPaywallOpen(true);
+
+  // Si MP redirigió a /pago-error o /pago-exitoso, abrimos un dialog encima
+  // de Home y limpiamos la URL para que reload no re-dispare el dialog.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [pagoError, setPagoError] = useState<PagoErrorState | null>(null);
+  const [pagoExternalRef, setPagoExternalRef] = useState<string | null>(null);
+  useEffect(() => {
+    if (location.pathname === "/pago-error") {
+      const params = new URLSearchParams(location.search);
+      setPagoError({
+        status: params.get("status"),
+        statusDetail: params.get("status_detail"),
+      });
+      navigate("/", { replace: true });
+    } else if (location.pathname === "/pago-exitoso") {
+      const params = new URLSearchParams(location.search);
+      const ref = params.get("ref");
+      if (ref) setPagoExternalRef(ref);
+      navigate("/", { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
 
   const [materias, setMaterias] = useState<SeleccionConNombre[]>([]);
   // Por default: todos los días marcados (= sin restricción).
@@ -352,6 +531,11 @@ export function Home() {
     <PaywallContext.Provider value={openPaywall}>
     <div className="min-h-screen bg-background">
       <PaywallDialog open={paywallOpen} onOpenChange={setPaywallOpen} />
+      <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
+      <PagoStatusDialog
+        externalReference={pagoExternalRef}
+        onClose={() => setPagoExternalRef(null)}
+      />
       <header className="border-b border-border bg-card">
         <div className="container flex items-center justify-between py-5">
           <div>
