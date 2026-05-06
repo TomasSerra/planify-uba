@@ -1,25 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sparkles,
   Loader2,
   AlertCircle,
-  CreditCard,
-  Check,
   CheckCircle2,
   Gem,
-  LogIn,
-  LogOut,
   XCircle,
+  Heart,
 } from "lucide-react";
+import mpIcon from "@/assets/mp-icon.png";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -28,233 +21,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MateriaSelector } from "@/components/MateriaSelector";
 import { RestriccionesPanel } from "@/components/RestriccionesPanel";
 import { CalendarioPlan } from "@/components/CalendarioPlan";
 import { PlanNavigator } from "@/components/PlanNavigator";
+import { Header } from "@/components/Header";
+import { FREE_MAX_PLANES, PRO_MAX_PLANES } from "@/components/PaywallProvider";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
-import { PaywallContext, usePaywall } from "@/lib/paywall";
+import { usePaywall } from "@/lib/paywall";
 import { useAlert } from "@/lib/alert";
 import {
   DIAS,
+  type FavoriteFilters,
   type FranjaExcluida,
   type MateriaSeleccionada,
+  type Plan,
   type PlanResponse,
 } from "@/lib/types";
 
 interface SeleccionConNombre extends MateriaSeleccionada {
   nombre: string;
-}
-
-// Mantener en sync con backend: SUBSCRIPTION_PRICE_ARS y SUBSCRIPTION_DAYS.
-const SUBSCRIPTION_PRICE_ARS = 5000;
-const SUBSCRIPTION_MONTHS = 3;
-
-const PRO_BENEFITS = [
-  "Filtrá por días, franjas horarias y sedes",
-  "Elegí cátedra fija o profesores específicos",
-  "Generá hasta 100 planes (gratis: 10)",
-  "Guardá tus combinaciones favoritas",
-];
-
-function PaywallDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } =
-    useAuth0();
-  const showAlert = useAlert();
-  const [loading, setLoading] = useState(false);
-
-  async function pagar() {
-    setLoading(true);
-    try {
-      const token = await getAccessTokenSilently();
-      if (!token) throw new Error("No token");
-      const { init_point } = await api.postCheckout(token);
-      window.location.href = init_point;
-    } catch (e) {
-      setLoading(false);
-      showAlert({
-        variant: "error",
-        title: "No se pudo iniciar el pago",
-        message: (e as Error).message,
-      });
-    }
-  }
-
-  const formattedPrice = new Intl.NumberFormat("es-AR").format(
-    SUBSCRIPTION_PRICE_ARS
-  );
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Suscripción Pro</DialogTitle>
-          <DialogDescription>
-            Desbloqueá todas las funciones para armar tu cursada sin límites.
-          </DialogDescription>
-        </DialogHeader>
-
-        <ul className="space-y-3 py-2">
-          {PRO_BENEFITS.map((b) => (
-            <li key={b} className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#EC990B]/15 text-[#EC990B]">
-                <Check className="size-3.5" strokeWidth={3} />
-              </span>
-              <span className="text-sm">{b}</span>
-            </li>
-          ))}
-        </ul>
-
-        {isAuthenticated ? (
-          <Button
-            size="lg"
-            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            onClick={pagar}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <CreditCard className="size-4" />
-            )}
-            Pagar ${formattedPrice} · {SUBSCRIPTION_MONTHS} meses
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            onClick={() => loginWithRedirect()}
-          >
-            <LogIn className="size-4" />
-            Iniciar sesión
-          </Button>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function PayChip() {
-  const { isPaid, isLoading } = useSubscription();
-  const openPaywall = usePaywall();
-
-  if (isLoading) {
-    return <Skeleton className="h-9 w-28 rounded-md" />;
-  }
-
-  // Cuando está pago, el indicador "Pro hasta..." va dentro del UserMenu
-  // (junto al email + badge Gem). Acá no renderizamos nada.
-  if (isPaid) return null;
-
-  return (
-    <Button
-      size="sm"
-      onClick={openPaywall}
-      className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-    >
-      <Gem className="size-4" />
-      Hacete Pro
-    </Button>
-  );
-}
-
-function UserMenu() {
-  const { user, isAuthenticated, isLoading, loginWithRedirect, logout } =
-    useAuth0();
-  const { isPaid, validUntil } = useSubscription();
-  const email = user?.email ?? "";
-  const initial = email.slice(0, 1).toUpperCase() || "?";
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-9 w-28 rounded-md" />
-        <Skeleton className="h-9 w-9 rounded-full" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <Button size="sm" onClick={() => loginWithRedirect()}>
-        <LogIn className="size-4" />
-        Iniciar sesión
-      </Button>
-    );
-  }
-
-  const validUntilFormatted = validUntil?.toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
-  return (
-    <div className="flex items-center gap-3">
-      <PayChip />
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-background py-1 pl-3 pr-1 transition-colors hover:bg-accent"
-          >
-            <div className="hidden flex-col leading-tight sm:flex text-left">
-              <span className="text-xs text-foreground">{email}</span>
-              {isPaid && validUntilFormatted && (
-                <span className="text-[10px] font-medium text-[#EC990B]">
-                  Pro hasta {validUntilFormatted}
-                </span>
-              )}
-            </div>
-            <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              {user?.picture ? (
-                <img
-                  src={user.picture}
-                  alt={email}
-                  className="size-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                initial
-              )}
-            </span>
-            {isPaid && (
-              <span
-                className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#EC990B] text-white shadow-sm ring-2 ring-card"
-                title="Suscripción Pro activa"
-              >
-                <Gem className="size-3" strokeWidth={2.5} />
-              </span>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-56 p-2">
-          <div className="border-b px-2 py-1.5 text-xs text-muted-foreground">
-            {email}
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              logout({
-                logoutParams: { returnTo: window.location.origin },
-              })
-            }
-            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-          >
-            <LogOut className="size-4" /> Cerrar sesión
-          </button>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
 }
 
 interface PagoErrorState {
@@ -323,7 +110,7 @@ function PagoErrorDialog({
             {retrying ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <CreditCard className="size-4" />
+              <img src={mpIcon} alt="" className="h-4 w-auto" />
             )}
             Reintentar pago
           </Button>
@@ -410,14 +197,123 @@ function PagoStatusDialog({
   );
 }
 
+function SaveFavoriteButton({
+  plan,
+  filters,
+  isPaid,
+  onLockedClick,
+}: {
+  plan: Plan;
+  filters: FavoriteFilters;
+  isPaid: boolean;
+  onLockedClick: () => void;
+}) {
+  const { getAccessTokenSilently } = useAuth0();
+  const showAlert = useAlert();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [savedId, setSavedId] = useState<number | null>(null);
+
+  // Plan distinto = botón vuelve a estado inicial.
+  const planKey = useMemo(
+    () => JSON.stringify(plan.opciones.map((o) => o.cursos.map((c) => c.id).sort())),
+    [plan]
+  );
+  const [keyAtSave, setKeyAtSave] = useState<string | null>(null);
+  const isSaved = savedId !== null && keyAtSave === planKey;
+
+  if (!isPaid) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onLockedClick}
+        title="Hacete Pro para guardar favoritos"
+      >
+        <Heart className="size-4" />
+        Guardar
+        <Gem className="size-3.5 text-[#EC990B]" />
+      </Button>
+    );
+  }
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      const token = await getAccessTokenSilently();
+      if (isSaved && savedId !== null) {
+        await api.deleteFavorito(savedId, token);
+        setSavedId(null);
+        setKeyAtSave(null);
+      } else {
+        const { id } = await api.addFavorito(plan, filters, token);
+        setSavedId(id);
+        setKeyAtSave(planKey);
+      }
+      queryClient.invalidateQueries({ queryKey: ["favoritos"] });
+    } catch (e) {
+      showAlert({
+        variant: "error",
+        title: isSaved ? "No se pudo eliminar" : "No se pudo guardar",
+        message: (e as Error).message,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={toggle}
+      disabled={busy}
+      className={
+        isSaved
+          ? "border-red-500 bg-red-500 text-white hover:bg-red-500/90 hover:text-white"
+          : ""
+      }
+    >
+      {busy ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Heart
+          className={"size-4 " + (isSaved ? "fill-current" : "")}
+        />
+      )}
+      {isSaved ? "Guardado" : "Guardar"}
+    </Button>
+  );
+}
+
 const ALL_DIAS: string[] = [...DIAS];
+
+interface UrlState {
+  m: { c: number; ca: number | null; p: string[] | null }[];
+  d: string[];
+  f: FranjaExcluida[];
+  s: string[];
+}
+
+function encodeUrlState(s: UrlState): string {
+  return encodeURIComponent(JSON.stringify(s));
+}
+
+function decodeUrlState(raw: string): UrlState | null {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    if (!parsed || !Array.isArray(parsed.m)) return null;
+    return parsed as UrlState;
+  } catch {
+    return null;
+  }
+}
 
 export function Home() {
   const { isPaid, isLoading: subLoading } = useSubscription();
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const showAlert = useAlert();
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const openPaywall = () => setPaywallOpen(true);
+  const openPaywall = usePaywall();
 
   // Si MP redirigió a /pago-error o /pago-exitoso, abrimos un dialog encima
   // de Home y limpiamos la URL para que reload no re-dispare el dialog.
@@ -447,6 +343,41 @@ export function Home() {
   const [franjas, setFranjas] = useState<FranjaExcluida[]>([]);
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
 
+  // Hidratar materias + filtros desde ?q=… (URL compartible) y disparar
+  // generación una sola vez cuando auth/sub terminan de cargar.
+  const urlLoadedRef = useRef(false);
+  const { isLoading: authLoading } = useAuth0();
+  useEffect(() => {
+    if (urlLoadedRef.current) return;
+    if (location.pathname !== "/") return;
+    if (authLoading || subLoading) return;
+    const q = new URLSearchParams(location.search).get("q");
+    if (!q) return;
+    const decoded = decodeUrlState(q);
+    if (!decoded) return;
+    urlLoadedRef.current = true;
+    (async () => {
+      try {
+        const all = await api.listMaterias();
+        const byCodigo = new Map(all.map((m) => [m.codigo, m.nombre]));
+        const seleccion: SeleccionConNombre[] = decoded.m.map((x) => ({
+          codigo: x.c,
+          catedra_id: x.ca,
+          profesores: x.p,
+          nombre: byCodigo.get(x.c) ?? `Materia ${x.c}`,
+        }));
+        setMaterias(seleccion);
+        setDiasPermitidos(decoded.d);
+        setFranjas(decoded.f);
+        setSedesPermitidas(decoded.s);
+        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, subLoading, location.pathname, location.search]);
+
   const [resultado, setResultado] = useState<PlanResponse | null>(null);
   const [planIdx, setPlanIdx] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -454,6 +385,8 @@ export function Home() {
   const [lastGeneratedSignature, setLastGeneratedSignature] = useState<
     string | null
   >(null);
+  const [lastGeneratedFilters, setLastGeneratedFilters] =
+    useState<FavoriteFilters | null>(null);
 
   const currentSignature = useMemo(
     () =>
@@ -473,33 +406,71 @@ export function Home() {
   const sinCambios =
     lastGeneratedSignature !== null && currentSignature === lastGeneratedSignature;
 
-  async function generar() {
-    if (materias.length === 0) return;
+  async function runGenerate(
+    seleccion: SeleccionConNombre[],
+    dias: string[],
+    franjasExcl: FranjaExcluida[],
+    sedes: string[]
+  ) {
+    if (seleccion.length === 0) return;
     setLoading(true);
     setError(null);
     setResultado(null);
     setPlanIdx(0);
     try {
-      const dias_excluidos = ALL_DIAS.filter((d) => !diasPermitidos.includes(d));
+      const dias_excluidos = ALL_DIAS.filter((d) => !dias.includes(d));
       const token = isAuthenticated
         ? await getAccessTokenSilently().catch(() => null)
         : null;
       const data = await api.postPlanes(
         {
-          materias: materias.map(({ codigo, catedra_id, profesores }) => ({
+          materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
             codigo,
             catedra_id,
             profesores,
           })),
           dias_excluidos,
-          franjas_excluidas: franjas,
-          sedes_permitidas: sedesPermitidas,
-          max_planes: 30,
+          franjas_excluidas: franjasExcl,
+          sedes_permitidas: sedes,
+          max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
         },
         token
       );
       setResultado(data);
-      setLastGeneratedSignature(currentSignature);
+      const sig = JSON.stringify({
+        materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+          codigo,
+          catedra_id,
+          profesores,
+        })),
+        diasPermitidos: [...dias].sort(),
+        franjas: franjasExcl,
+        sedesPermitidas: [...sedes].sort(),
+      });
+      setLastGeneratedSignature(sig);
+      setLastGeneratedFilters({
+        dias_excluidos,
+        franjas_excluidas: franjasExcl,
+        sedes_permitidas: sedes,
+        materias: seleccion.map((m) => ({
+          codigo: m.codigo,
+          nombre: m.nombre,
+          catedra_id: m.catedra_id,
+          catedra_label: null,
+          profesores: m.profesores,
+        })),
+      });
+      const q = encodeUrlState({
+        m: seleccion.map((m) => ({
+          c: m.codigo,
+          ca: m.catedra_id,
+          p: m.profesores,
+        })),
+        d: dias,
+        f: franjasExcl,
+        s: sedes,
+      });
+      navigate(`/?q=${q}`, { replace: true });
     } catch (e) {
       const msg = (e as Error).message;
       if (msg.startsWith("403")) {
@@ -520,6 +491,10 @@ export function Home() {
     }
   }
 
+  function generar() {
+    return runGenerate(materias, diasPermitidos, franjas, sedesPermitidas);
+  }
+
   const planActual = resultado?.planes[planIdx] ?? null;
   const sinResultados = resultado && resultado.planes.length === 0;
   const materiasNombres = (codigos: number[]) =>
@@ -528,25 +503,13 @@ export function Home() {
       .join(", ");
 
   return (
-    <PaywallContext.Provider value={openPaywall}>
     <div className="min-h-screen bg-background">
-      <PaywallDialog open={paywallOpen} onOpenChange={setPaywallOpen} />
       <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
       <PagoStatusDialog
         externalReference={pagoExternalRef}
         onClose={() => setPagoExternalRef(null)}
       />
-      <header className="border-b border-border bg-card">
-        <div className="container flex items-center justify-between py-5">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Horarios</h1>
-            <p className="text-xs text-muted-foreground">
-              Facultad de Psicología — UBA
-            </p>
-          </div>
-          <UserMenu />
-        </div>
-      </header>
+      <Header />
 
       <main className="container max-w-6xl space-y-6 py-8">
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -573,7 +536,7 @@ export function Home() {
                 onSedesChange={setSedesPermitidas}
                 isPaid={isPaid}
                 isLoading={subLoading}
-                onUpgrade={openPaywall}
+                onUpgrade={() => openPaywall("filtros")}
               />
             </CardContent>
           </Card>
@@ -634,7 +597,7 @@ export function Home() {
 
         {resultado && resultado.planes.length > 0 && (
           <Card>
-            <CardHeader className="flex-row items-center justify-between">
+            <CardHeader className="flex-row items-center justify-between gap-3">
               <div>
                 <CardTitle>Calendario</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -643,11 +606,21 @@ export function Home() {
                   {resultado.planes.length === 1 ? "" : "es"} sin solapamientos
                 </p>
               </div>
-              <PlanNavigator
-                index={planIdx}
-                total={resultado.planes.length}
-                onChange={setPlanIdx}
-              />
+              <div className="flex items-center gap-2">
+                {planActual && lastGeneratedFilters && (
+                  <SaveFavoriteButton
+                    plan={planActual}
+                    filters={lastGeneratedFilters}
+                    isPaid={isPaid}
+                    onLockedClick={() => openPaywall("favoritos")}
+                  />
+                )}
+                <PlanNavigator
+                  index={planIdx}
+                  total={resultado.planes.length}
+                  onChange={setPlanIdx}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <CalendarioPlan plan={planActual} />
@@ -656,6 +629,5 @@ export function Home() {
         )}
       </main>
     </div>
-    </PaywallContext.Provider>
   );
 }

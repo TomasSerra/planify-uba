@@ -73,3 +73,20 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 CREATE INDEX IF NOT EXISTS idx_subs_user_until
     ON subscriptions(clerk_user_id, valid_until DESC);
+
+-- Planes guardados como favoritos por usuarios Pro. plan_data almacena el Plan
+-- tal cual lo devuelve /planes (snapshot en JSON: los cursos cambian entre
+-- cuatrimestres, no tiene sentido FKearlo a cursos.id).
+CREATE TABLE IF NOT EXISTS favorite_plans (
+    id              BIGSERIAL PRIMARY KEY,
+    clerk_user_id   TEXT NOT NULL,
+    plan_data       JSONB NOT NULL,
+    -- Snapshot de los filtros (días excluidos, franjas, sedes, selección por
+    -- materia) que el usuario tenía al guardar. Se muestran en la card de la
+    -- página de favoritos.
+    filters_data    JSONB,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user
+    ON favorite_plans(clerk_user_id, created_at DESC);

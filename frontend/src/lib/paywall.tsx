@@ -1,6 +1,15 @@
 import { createContext, useContext } from "react";
 
-export const PaywallContext = createContext<(() => void) | null>(null);
+export type PaywallReason =
+  | "catedra"
+  | "profesores"
+  | "filtros"
+  | "favoritos"
+  | "general";
+
+export const PaywallContext = createContext<
+  ((reason?: PaywallReason) => void) | null
+>(null);
 
 export function usePaywall() {
   const open = useContext(PaywallContext);

@@ -1,6 +1,9 @@
 import type {
+  Favorite,
+  FavoriteFilters,
   MateriaListItem,
   MateriaOpciones,
+  Plan,
   PlanRequest,
   PlanResponse,
 } from "./types";
@@ -68,4 +71,18 @@ export const api = {
     ),
   getPagoStatus: (externalReference: string) =>
     request<PagoStatus>(`/pagos/${externalReference}/status`),
+  listFavoritos: (token: string) =>
+    request<{ favorites: Favorite[] }>("/favoritos", undefined, token),
+  addFavorito: (plan: Plan, filters: FavoriteFilters | null, token: string) =>
+    request<{ id: number; created_at: string }>(
+      "/favoritos",
+      { method: "POST", body: JSON.stringify({ plan, filters }) },
+      token
+    ),
+  deleteFavorito: (id: number, token: string) =>
+    request<{ ok: boolean }>(
+      `/favoritos/${id}`,
+      { method: "DELETE" },
+      token
+    ),
 };

@@ -116,7 +116,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
                 selected={seleccion.catedra_id}
                 onSelect={(id) => onChange({ ...seleccion, catedra_id: id })}
                 disabled={!isPaid}
-                onLockedClick={openPaywall}
+                onLockedClick={() => openPaywall("catedra")}
               />
             )}
           </div>
@@ -133,7 +133,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
                 onChange={(profs) => onChange({ ...seleccion, profesores: profs })}
                 catedraLabel={catedraSeleccionada?.titular ?? null}
                 disabled={!isPaid}
-                onLockedClick={openPaywall}
+                onLockedClick={() => openPaywall("profesores")}
               />
             )}
           </div>

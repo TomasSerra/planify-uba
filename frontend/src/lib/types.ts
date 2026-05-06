@@ -77,6 +77,26 @@ export interface PlanResponse {
   materias_sin_opciones: number[];
 }
 
+export interface FavoriteFilters {
+  dias_excluidos: string[];
+  franjas_excluidas: FranjaExcluida[];
+  sedes_permitidas: string[];
+  materias: Array<{
+    codigo: number;
+    nombre: string;
+    catedra_id: number | null;
+    catedra_label: string | null;
+    profesores: string[] | null;
+  }>;
+}
+
+export interface Favorite {
+  id: number;
+  plan: Plan;
+  filters: FavoriteFilters | null;
+  created_at: string;
+}
+
 export const DIAS = [
   "lunes",
   "martes",

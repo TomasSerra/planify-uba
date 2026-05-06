@@ -25,6 +25,7 @@ from .models import (
     MateriaListItem,
     MateriaOpciones,
 )
+from .favoritos import router as favoritos_router
 from .pagos import router as pagos_router
 from .planes import PlanRequest, PlanResponse, armar_planes
 from .subs import has_active_subscription, router as subs_router
@@ -87,6 +88,7 @@ app.add_middleware(
 
 app.include_router(subs_router)
 app.include_router(pagos_router, prefix="/pagos")
+app.include_router(favoritos_router, prefix="/favoritos")
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -304,19 +306,21 @@ def post_planes(
     user: AuthUser | None = Depends(optional_user),
 ) -> PlanResponse:
     with pool.connection() as conn:
-        if _request_uses_filters(req):
-            is_paid = (
-                user is not None and has_active_subscription(conn, user.id)
+        is_paid = (
+            user is not None and has_active_subscription(conn, user.id)
+        )
+        if _request_uses_filters(req) and not is_paid:
+            # Si el FE deshabilita los filtros para no-Pro, llegar acá con
+            # filtros == alguien intentando bypassear el paywall.
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Los filtros (días, franjas, sedes, cátedra y "
+                    "profesores) son una función Pro. Suscribite para "
+                    "usarlos."
+                ),
             )
-            if not is_paid:
-                # Si el FE deshabilita los filtros para no-Pro, llegar acá con
-                # filtros == alguien intentando bypassear el paywall.
-                raise HTTPException(
-                    status_code=403,
-                    detail=(
-                        "Los filtros (días, franjas, sedes, cátedra y "
-                        "profesores) son una función Pro. Suscribite para "
-                        "usarlos."
-                    ),
-                )
+        max_allowed = 50 if is_paid else 10
+        if req.max_planes > max_allowed:
+            req.max_planes = max_allowed
         return armar_planes(conn, req)
