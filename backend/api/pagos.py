@@ -66,8 +66,10 @@ def post_checkout(user: AuthUser = Depends(current_user)) -> CheckoutResponse:
             "failure": f"{APP_URL}/pago-error",
             "pending": f"{APP_URL}/pago-exitoso?ref={external_reference}",
         },
-        # auto_return omitido a propósito: MP rechaza la preference si las back_urls
-        # no son HTTPS/públicas. El usuario clickea "Volver al sitio" manualmente.
+        # En dev (APP_URL=http://localhost) MP rechaza la preference si pedimos
+        # auto_return — los back_urls deben ser HTTPS públicos. Solo lo pedimos
+        # si APP_URL es https.
+        **({"auto_return": "approved"} if APP_URL.startswith("https://") else {}),
         "notification_url": f"{APP_URL_BACKEND}/pagos/webhook",
     }
     res = _mp_client.post(
