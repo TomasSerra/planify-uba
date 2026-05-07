@@ -8,6 +8,7 @@ import {
   Gem,
   XCircle,
   Heart,
+  ChevronDown,
 } from "lucide-react";
 import mpIcon from "@/assets/mp-icon.png";
 import { useAuth0 } from "@auth0/auth0-react";
@@ -345,6 +346,7 @@ export function Home() {
   const [diasPermitidos, setDiasPermitidos] = useState<string[]>(ALL_DIAS);
   const [franjas, setFranjas] = useState<FranjaExcluida[]>([]);
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
+  const [filtrosOpen, setFiltrosOpen] = useState(false);
 
   // Hidratar materias + filtros desde ?q=… (URL compartible) y disparar
   // generación una sola vez cuando auth/sub terminan de cargar.
@@ -573,24 +575,38 @@ export function Home() {
       />
       <Header />
 
-      <main className="container max-w-6xl space-y-6 py-8">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+      <main className="container space-y-6 py-8">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto]">
           <div className="flex gap-3">
             <HistorialPopover onRestore={restoreFromHistory} />
-            <Card className="flex flex-1 flex-col">
-              <CardHeader>
-                <CardTitle>Materias</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <MateriaSelector selected={materias} onChange={setMaterias} />
-              </CardContent>
-            </Card>
+            <div className="relative min-w-0 flex-1">
+              <Card className="flex flex-col lg:absolute lg:inset-0">
+                <CardHeader>
+                  <CardTitle>Materias</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col lg:min-h-0 lg:flex-1">
+                  <MateriaSelector selected={materias} onChange={setMaterias} />
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          <Card>
+          <Card className="lg:row-span-2">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <CardTitle>Filtros</CardTitle>
+                <button
+                  type="button"
+                  onClick={() => setFiltrosOpen((v) => !v)}
+                  className="flex flex-1 items-center gap-2 text-left lg:cursor-default lg:pointer-events-none"
+                >
+                  <ChevronDown
+                    className={
+                      "size-5 shrink-0 text-muted-foreground transition-transform lg:hidden " +
+                      (filtrosOpen ? "rotate-180" : "")
+                    }
+                  />
+                  <CardTitle>Filtros</CardTitle>
+                </button>
                 {(diasPermitidos.length !== ALL_DIAS.length ||
                   franjas.length > 0 ||
                   sedesPermitidas.length > 0) && (
@@ -608,7 +624,7 @@ export function Home() {
                 )}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className={filtrosOpen ? "" : "hidden lg:block"}>
               <RestriccionesPanel
                 diasPermitidos={diasPermitidos}
                 onDiasPermitidosChange={setDiasPermitidos}
@@ -622,27 +638,30 @@ export function Home() {
               />
             </CardContent>
           </Card>
-        </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            {materias.length === 0
-              ? "Seleccioná al menos una materia para generar planes."
-              : `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`}
-          </p>
-          <Button
-            size="lg"
-            onClick={generar}
-            disabled={loading || materias.length === 0 || diasPermitidos.length === 0 || sinCambios}
-            className="bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
-          >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            {loading ? "Generando..." : "Generar planes"}
-          </Button>
+          <div className="flex gap-3">
+            <div className="hidden size-10 shrink-0 lg:block" aria-hidden />
+            <div className="flex flex-1 items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                {materias.length === 0
+                  ? "Seleccioná al menos una materia para generar planes."
+                  : `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`}
+              </p>
+              <Button
+                size="lg"
+                onClick={generar}
+                disabled={loading || materias.length === 0 || diasPermitidos.length === 0 || sinCambios}
+                className="bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
+              >
+                {loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                {loading ? "Generando..." : "Generar planes"}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {error && (

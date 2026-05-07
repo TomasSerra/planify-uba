@@ -118,7 +118,7 @@ function PaywallDialog({
 
         <ul className="space-y-3 py-2">
           {PRO_BENEFITS.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-start gap-3">
+            <li key={text} className="flex items-center gap-3">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#EC990B]/15 text-[#EC990B]">
                 <Icon className="size-4" strokeWidth={2.25} />
               </span>

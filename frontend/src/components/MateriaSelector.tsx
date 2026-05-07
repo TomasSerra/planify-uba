@@ -63,8 +63,8 @@ export function MateriaSelector({ selected, onChange }: Props) {
 
   function add(m: MateriaListItem) {
     onChange([
-      ...selected,
       { codigo: m.codigo, nombre: m.nombre, catedra_id: null, profesores: null },
+      ...selected,
     ]);
     setOpen(false);
   }
@@ -82,8 +82,8 @@ export function MateriaSelector({ selected, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-3 lg:h-full">
+      <div className="flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BookOpen className="size-4" />
           <span>
@@ -141,7 +141,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       </div>
 
       {selected.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           {selected.map((m) => (
             <MateriaCard
               key={m.codigo}
