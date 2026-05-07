@@ -26,8 +26,10 @@ import { RestriccionesPanel } from "@/components/RestriccionesPanel";
 import { CalendarioPlan } from "@/components/CalendarioPlan";
 import { PlanNavigator } from "@/components/PlanNavigator";
 import { Header } from "@/components/Header";
+import { HistorialPopover } from "@/components/HistorialPopover";
 import { FREE_MAX_PLANES, PRO_MAX_PLANES } from "@/components/PaywallProvider";
 import { api } from "@/lib/api";
+import { pushHistory } from "@/lib/planHistory";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
 import { useAlert } from "@/lib/alert";
@@ -37,6 +39,7 @@ import {
   type FranjaExcluida,
   type MateriaSeleccionada,
   type Plan,
+  type PlanHistoryEntry,
   type PlanResponse,
 } from "@/lib/types";
 
@@ -448,7 +451,7 @@ export function Home() {
         sedesPermitidas: [...sedes].sort(),
       });
       setLastGeneratedSignature(sig);
-      setLastGeneratedFilters({
+      const filtersSnapshot: FavoriteFilters = {
         dias_excluidos,
         franjas_excluidas: franjasExcl,
         sedes_permitidas: sedes,
@@ -459,6 +462,22 @@ export function Home() {
           catedra_label: null,
           profesores: m.profesores,
         })),
+      };
+      setLastGeneratedFilters(filtersSnapshot);
+      pushHistory({
+        request: {
+          materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+            codigo,
+            catedra_id,
+            profesores,
+          })),
+          dias_excluidos,
+          franjas_excluidas: franjasExcl,
+          sedes_permitidas: sedes,
+          max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
+        },
+        filters: filtersSnapshot,
+        response: data,
       });
       const q = encodeUrlState({
         m: seleccion.map((m) => ({
@@ -495,6 +514,49 @@ export function Home() {
     return runGenerate(materias, diasPermitidos, franjas, sedesPermitidas);
   }
 
+  function restoreFromHistory(entry: PlanHistoryEntry) {
+    const seleccion: SeleccionConNombre[] = entry.filters.materias.map((m) => ({
+      codigo: m.codigo,
+      nombre: m.nombre,
+      catedra_id: m.catedra_id,
+      profesores: m.profesores,
+    }));
+    const dias = ALL_DIAS.filter(
+      (d) => !entry.filters.dias_excluidos.includes(d)
+    );
+    setMaterias(seleccion);
+    setDiasPermitidos(dias);
+    setFranjas(entry.filters.franjas_excluidas);
+    setSedesPermitidas(entry.filters.sedes_permitidas);
+    setResultado(entry.response);
+    setPlanIdx(0);
+    setError(null);
+    setLastGeneratedSignature(
+      JSON.stringify({
+        materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+          codigo,
+          catedra_id,
+          profesores,
+        })),
+        diasPermitidos: [...dias].sort(),
+        franjas: entry.filters.franjas_excluidas,
+        sedesPermitidas: [...entry.filters.sedes_permitidas].sort(),
+      })
+    );
+    setLastGeneratedFilters(entry.filters);
+    const q = encodeUrlState({
+      m: seleccion.map((m) => ({
+        c: m.codigo,
+        ca: m.catedra_id,
+        p: m.profesores,
+      })),
+      d: dias,
+      f: entry.filters.franjas_excluidas,
+      s: entry.filters.sedes_permitidas,
+    });
+    navigate(`/?q=${q}`, { replace: true });
+  }
+
   const planActual = resultado?.planes[planIdx] ?? null;
   const sinResultados = resultado && resultado.planes.length === 0;
   const materiasNombres = (codigos: number[]) =>
@@ -513,18 +575,38 @@ export function Home() {
 
       <main className="container max-w-6xl space-y-6 py-8">
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Materias</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MateriaSelector selected={materias} onChange={setMaterias} />
-            </CardContent>
-          </Card>
+          <div className="flex gap-3">
+            <HistorialPopover onRestore={restoreFromHistory} />
+            <Card className="flex flex-1 flex-col">
+              <CardHeader>
+                <CardTitle>Materias</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <MateriaSelector selected={materias} onChange={setMaterias} />
+              </CardContent>
+            </Card>
+          </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Filtros</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Filtros</CardTitle>
+                {(diasPermitidos.length !== ALL_DIAS.length ||
+                  franjas.length > 0 ||
+                  sedesPermitidas.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiasPermitidos(ALL_DIAS);
+                      setFranjas([]);
+                      setSedesPermitidas([]);
+                    }}
+                    className="text-sm font-medium leading-none text-primary hover:underline"
+                  >
+                    Restablecer
+                  </button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <RestriccionesPanel

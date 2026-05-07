@@ -90,6 +90,14 @@ export interface FavoriteFilters {
   }>;
 }
 
+export interface PlanHistoryEntry {
+  id: string;
+  createdAt: number;
+  request: PlanRequest;
+  filters: FavoriteFilters;
+  response: PlanResponse;
+}
+
 export interface Favorite {
   id: number;
   plan: Plan;

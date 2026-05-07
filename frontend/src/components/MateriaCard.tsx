@@ -78,7 +78,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
   );
 
   return (
-    <div className="rounded-xl border border-border bg-background p-4">
+    <div className="rounded-xl border border-border bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold leading-tight">{nombre}</h3>
         <button
@@ -182,7 +182,7 @@ function CatedraDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
         >
           <GraduationCap className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{label}</span>
@@ -300,7 +300,7 @@ function ProfesoresDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
         >
           <Users className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{label}</span>

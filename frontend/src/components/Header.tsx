@@ -19,7 +19,7 @@ const TABS = [
 function Tabs() {
   const { pathname } = useLocation();
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-4">
       {TABS.map(({ to, label, icon: Icon }) => {
         const active = pathname === to;
         return (
@@ -29,7 +29,7 @@ function Tabs() {
             className={
               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors " +
               (active
-                ? "font-semibold text-foreground"
+                ? "font-semibold text-primary"
                 : "text-muted-foreground hover:text-foreground")
             }
           >
@@ -104,7 +104,7 @@ function UserMenu() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-background py-1 pl-3 pr-1 transition-colors hover:bg-accent"
+            className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-white py-1 pl-3 pr-1 transition-colors hover:bg-accent"
           >
             <div className="hidden flex-col leading-tight sm:flex text-left">
               <span className="text-xs text-foreground">{email}</span>
@@ -161,11 +161,8 @@ export function Header() {
   return (
     <header className="border-b border-border bg-card">
       <div className="container flex items-center gap-4 py-4">
-        <Link to="/" className="flex-1 leading-tight">
-          <h1 className="text-base font-semibold tracking-tight">Horarios</h1>
-          <p className="text-[11px] text-muted-foreground">
-            Facultad de Psicología — UBA
-          </p>
+        <Link to="/" className="flex flex-1 items-center">
+          <img src="/logo.png" alt="Horarios" className="h-12 w-auto" />
         </Link>
         <Tabs />
         <div className="flex flex-1 justify-end">

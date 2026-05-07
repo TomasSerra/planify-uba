@@ -12,7 +12,7 @@ export default {
     extend: {
       fontFamily: {
         sans: [
-          "Inter",
+          "Montserrat",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

@@ -172,7 +172,7 @@ export function RestriccionesPanel({
                   "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors " +
                   (active
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-accent")
+                    : "border-border bg-white text-muted-foreground hover:bg-accent")
                 }
               >
                 {active && <Check className="size-3.5" strokeWidth={3} />}
@@ -226,7 +226,7 @@ export function RestriccionesPanel({
                           "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors " +
                           (active
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-muted-foreground hover:bg-accent")
+                            : "border-border bg-white text-muted-foreground hover:bg-accent")
                         }
                       >
                         {active && <Check className="size-3" strokeWidth={3} />}
@@ -294,7 +294,7 @@ export function RestriccionesPanel({
           {SEDES.map((s) => (
             <label
               key={s.codigo}
-              className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 transition-colors hover:bg-accent"
+              className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 transition-colors hover:bg-accent"
             >
               <Checkbox
                 checked={sedesPermitidas.includes(s.codigo)}
