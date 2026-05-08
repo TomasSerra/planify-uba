@@ -56,7 +56,7 @@ export function HistorialPopover({
           <Clock className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-2">
+      <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2rem))] p-2">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Historial · últimos {entries.length}
         </div>
@@ -65,7 +65,7 @@ export function HistorialPopover({
             Todavía no generaste ningún plan.
           </div>
         ) : (
-          <ul className="max-h-96 divide-y divide-border overflow-y-auto">
+          <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto sm:max-h-96">
             {entries.map((entry) => {
               const nMaterias = entry.filters.materias.length;
               const nPlanes = entry.response.planes.length;

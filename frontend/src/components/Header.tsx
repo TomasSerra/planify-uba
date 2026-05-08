@@ -19,7 +19,7 @@ const TABS = [
 function Tabs() {
   const { pathname } = useLocation();
   return (
-    <nav className="flex items-center gap-4">
+    <nav className="hidden items-center gap-4 sm:flex">
       {TABS.map(({ to, label, icon: Icon }) => {
         const active = pathname === to;
         return (
@@ -45,6 +45,41 @@ function Tabs() {
   );
 }
 
+function MobileBottomNav() {
+  const { pathname } = useLocation();
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="flex items-stretch justify-around">
+        {TABS.map(({ to, label, icon: Icon }) => {
+          const active = pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-label={label}
+              className={
+                "flex flex-1 flex-col items-center gap-0.5 px-3 py-2 text-[11px] font-medium transition-colors " +
+                (active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              <Icon
+                className="size-5"
+                strokeWidth={active ? 2.5 : 2}
+              />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 function PayChip() {
   const { isPaid, isLoading } = useSubscription();
   const openPaywall = usePaywall();
@@ -61,7 +96,7 @@ function PayChip() {
       className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
     >
       <Gem className="size-4" />
-      Hacete Pro
+      <span className="hidden sm:inline">Hacete Pro</span>
     </Button>
   );
 }
@@ -159,16 +194,19 @@ function UserMenu() {
 
 export function Header() {
   return (
-    <header className="border-b border-border bg-card">
-      <div className="container flex items-center gap-4 py-4">
-        <Link to="/" className="flex flex-1 items-center">
-          <img src="/logo.png" alt="Horarios" className="h-12 w-auto" />
-        </Link>
-        <Tabs />
-        <div className="flex flex-1 justify-end">
-          <UserMenu />
+    <>
+      <header className="border-b border-border bg-card">
+        <div className="container flex items-center gap-2 py-4 sm:gap-4">
+          <Link to="/" className="flex flex-1 items-center">
+            <img src="/logo.png" alt="Horarios" className="h-9 w-auto sm:h-12" />
+          </Link>
+          <Tabs />
+          <div className="flex flex-1 justify-end">
+            <UserMenu />
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      <MobileBottomNav />
+    </>
   );
 }

@@ -111,7 +111,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-3 lg:h-full">
-      <div className="flex shrink-0 items-center justify-between">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BookOpen className="size-4" />
           <span>
@@ -128,7 +128,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
               Agregar materia
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[520px] p-0" align="end">
+          <PopoverContent className="w-[min(520px,calc(100vw-2rem))] p-0" align="end">
             <Command shouldFilter filter={filtrarMateria}>
               <CommandInput
                 placeholder="Buscar materia..."

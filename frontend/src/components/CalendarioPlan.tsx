@@ -107,8 +107,8 @@ export function CalendarioPlan({ plan }: Props) {
 
   return (
     <div className="overflow-auto max-h-[90dvh]">
-      <div className="min-w-[760px] rounded-2xl border border-border bg-card">
-        <div className="grid grid-cols-[64px_repeat(6,1fr)] border-b border-border">
+      <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
+        <div className="grid grid-cols-[40px_repeat(6,1fr)] border-b border-border sm:grid-cols-[64px_repeat(6,1fr)]">
           <div className="p-3 text-xs font-medium text-muted-foreground" />
           {DIAS_DISPLAY.map((d) => (
             <div
@@ -120,7 +120,7 @@ export function CalendarioPlan({ plan }: Props) {
           ))}
         </div>
 
-        <div className="grid grid-cols-[64px_repeat(6,1fr)]">
+        <div className="grid grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]">
           {/* Columna de horas: una etiqueta más que bloques (incluye horaMax) */}
           <div
             className="relative border-r border-border"
@@ -130,7 +130,7 @@ export function CalendarioPlan({ plan }: Props) {
               (h, i) => (
                 <div
                   key={h}
-                  className="absolute right-0 flex -translate-y-1/2 justify-end pr-2 text-[10px] font-medium text-muted-foreground"
+                  className="absolute right-0 flex -translate-y-1/2 justify-end pr-1 text-[10px] font-medium text-muted-foreground sm:pr-2"
                   style={{ top: i * PIXELS_PER_HOUR }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -192,7 +192,7 @@ export function CalendarioPlan({ plan }: Props) {
       </div>
 
       {/* Leyenda */}
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
         {plan.opciones.map((op, idx) => {
           const palette = PALETTE[idx % PALETTE.length];
           return (
