@@ -104,6 +104,52 @@ def _curso_cumple_restricciones(
     return True
 
 
+def _opcion_key(op: OpcionMateria) -> int:
+    # La comisión siempre es el primer curso (ver _fetch_opciones_por_materia).
+    return op.cursos[0].id
+
+
+def _differs_in(p1: Plan, p2: Plan, idx: int) -> bool:
+    return _opcion_key(p1.opciones[idx]) != _opcion_key(p2.opciones[idx])
+
+
+def _differs_only_in(p1: Plan, p2: Plan, idx: int) -> bool:
+    for i, (a, b) in enumerate(zip(p1.opciones, p2.opciones)):
+        same = _opcion_key(a) == _opcion_key(b)
+        if i == idx and same:
+            return False
+        if i != idx and not same:
+            return False
+    return True
+
+
+def _reorder_round_robin(planes: list[Plan], num_materias: int) -> list[Plan]:
+    """Reordena los planes para que la materia que cambia entre planes
+    consecutivos rote (plan 1→2 cambia materia 0, 2→3 cambia materia 1, ...).
+    Si no hay candidato que cambie sólo la materia objetivo, cae a uno que
+    cambie esa materia (entre otras) y, en última instancia, a cualquiera."""
+    if len(planes) <= 1 or num_materias <= 1:
+        return planes
+    pool = list(planes)
+    ordered = [pool.pop(0)]
+    while pool:
+        target = (len(ordered) - 1) % num_materias
+        prev = ordered[-1]
+        idx = next(
+            (i for i, p in enumerate(pool) if _differs_only_in(prev, p, target)),
+            None,
+        )
+        if idx is None:
+            idx = next(
+                (i for i, p in enumerate(pool) if _differs_in(prev, p, target)),
+                None,
+            )
+        if idx is None:
+            idx = 0
+        ordered.append(pool.pop(idx))
+    return ordered
+
+
 def _hay_solapamiento(cursos: Iterable[CursoEnPlan]) -> bool:
     by_day: dict[str, list[CursoEnPlan]] = defaultdict(list)
     for c in cursos:
@@ -241,6 +287,14 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
     if materias_sin_opciones:
         return PlanResponse(planes=[], total_generados=0, materias_sin_opciones=materias_sin_opciones)
 
+    # Generamos un pool más grande que max_planes para que el reorden
+    # round-robin tenga material para diversificar (si solo tomáramos los
+    # primeros max_planes de itertools.product, todos diferirían en la última
+    # materia y el reorden no podría rotar).
+    POOL_MULTIPLIER = 10
+    POOL_HARD_CAP = 1000
+    pool_target = min(req.max_planes * POOL_MULTIPLIER, POOL_HARD_CAP)
+
     planes: list[Plan] = []
     total = 0
     for combo in itertools.product(*opciones_validas):
@@ -248,8 +302,12 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
         cursos = [c for op in combo for c in op.cursos]
         if not _hay_solapamiento(cursos):
             planes.append(Plan(opciones=list(combo)))
-            if len(planes) >= req.max_planes:
+            if len(planes) >= pool_target:
                 break
+
+    planes = _reorder_round_robin(planes, num_materias=len(opciones_validas))[
+        : req.max_planes
+    ]
 
     return PlanResponse(
         planes=planes,

@@ -356,11 +356,14 @@ export function Home() {
     if (urlLoadedRef.current) return;
     if (location.pathname !== "/") return;
     if (authLoading || subLoading) return;
+    // Marcar ya como cargado: si no hay ?q= no hay nada que hidratar, y si lo
+    // hay vamos a hidratar ahora. En ambos casos, los navigate() posteriores
+    // de runGenerate no deben re-disparar este efecto.
+    urlLoadedRef.current = true;
     const q = new URLSearchParams(location.search).get("q");
     if (!q) return;
     const decoded = decodeUrlState(q);
     if (!decoded) return;
-    urlLoadedRef.current = true;
     (async () => {
       try {
         const all = await api.listMaterias();
