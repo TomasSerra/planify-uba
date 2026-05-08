@@ -96,7 +96,7 @@ function FavoritoCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3">
+      <CardHeader className="flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -134,7 +134,7 @@ function FavoritoCard({
           size="sm"
           onClick={() => onDelete(fav.id)}
           disabled={deleting}
-          className="shrink-0 text-muted-foreground hover:text-destructive"
+          className="shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-auto"
         >
           {deleting ? (
             <Loader2 className="size-4 animate-spin" />
@@ -205,7 +205,7 @@ export function Favoritos() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container max-w-6xl space-y-6 py-8">
+      <main className="container max-w-6xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">
             Planes guardados

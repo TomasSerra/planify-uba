@@ -103,7 +103,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
       )}
 
       {opciones && (
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
           <div>
             <p className="mb-1 text-xs font-medium text-muted-foreground">
               Cátedra
@@ -189,7 +189,7 @@ function CatedraDropdown({
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-1" align="start">
+      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-1" align="start">
         <button
           type="button"
           onClick={() => {
@@ -307,7 +307,7 @@ function ProfesoresDropdown({
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start">
+      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-2" align="start">
         <p className="px-2 pb-2 text-xs text-muted-foreground">
           {catedraLabel
             ? `Profesores de ${catedraLabel}.`

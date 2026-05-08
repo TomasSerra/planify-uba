@@ -578,7 +578,7 @@ export function Home() {
       />
       <Header />
 
-      <main className="container space-y-6 py-8">
+      <main className="container space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto]">
           <div className="flex gap-3">
             <HistorialPopover onRestore={restoreFromHistory} />
@@ -644,7 +644,7 @@ export function Home() {
 
           <div className="flex gap-3">
             <div className="hidden size-10 shrink-0 lg:block" aria-hidden />
-            <div className="flex flex-1 items-center justify-between gap-4">
+            <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-muted-foreground">
                 {materias.length === 0
                   ? "Seleccioná al menos una materia para generar planes."
@@ -701,7 +701,7 @@ export function Home() {
 
         {resultado && resultado.planes.length > 0 && (
           <Card>
-            <CardHeader className="flex-row items-center justify-between gap-3">
+            <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Calendario</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">

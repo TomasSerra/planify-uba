@@ -242,7 +242,7 @@ export function RestriccionesPanel({
                     onChange={(e) =>
                       updateFranja(i, { hora_inicio: e.target.value })
                     }
-                    className="h-9 w-28"
+                    className="h-9 w-full max-w-[8rem]"
                   />
                   <span className="text-sm text-muted-foreground">a</span>
                   <Input
@@ -251,7 +251,7 @@ export function RestriccionesPanel({
                     onChange={(e) =>
                       updateFranja(i, { hora_fin: e.target.value })
                     }
-                    className="h-9 w-28"
+                    className="h-9 w-full max-w-[8rem]"
                   />
                   <Button
                     variant="ghost"
