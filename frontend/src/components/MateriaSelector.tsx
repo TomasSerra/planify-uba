@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +27,39 @@ interface Props {
   onChange: (materias: SeleccionConNombre[]) => void;
 }
 
+// El default de cmdk usa command-score (fuzzy con tildes y rankings raros);
+// con esto hacemos un substring match sobre texto normalizado, que es lo que
+// el usuario espera al buscar materias.
+function normalizar(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function filtrarMateria(value: string, search: string): number {
+  if (!search) return 1;
+  const v = normalizar(value);
+  const s = normalizar(search.trim());
+  if (!s) return 1;
+  if (v.startsWith(s)) return 1;
+  if (v.includes(s)) return 0.8;
+  // Fallback: que aparezcan todas las palabras del search en cualquier orden.
+  const palabras = s.split(/\s+/).filter(Boolean);
+  if (palabras.length > 1 && palabras.every((p) => v.includes(p))) return 0.5;
+  return 0;
+}
+
 export function MateriaSelector({ selected, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [materias, setMaterias] = useState<MateriaListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Scroll al tope cada vez que cambia el query. En un useEffect (no en
+  // onValueChange) para correr DESPUÉS de que cmdk filtró y reordenó.
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,9 +129,12 @@ export function MateriaSelector({ selected, onChange }: Props) {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[520px] p-0" align="end">
-            <Command shouldFilter>
-              <CommandInput placeholder="Buscar materia..." />
-              <CommandList>
+            <Command shouldFilter filter={filtrarMateria}>
+              <CommandInput
+                placeholder="Buscar materia..."
+                onValueChange={setQuery}
+              />
+              <CommandList ref={listRef}>
                 {loading && (
                   <div className="py-6 text-center text-sm text-muted-foreground">
                     Cargando materias...
