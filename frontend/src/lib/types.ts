@@ -47,6 +47,8 @@ export interface MateriaSeleccionada {
   // null = todos (sin filtro). [] = ninguno (sin opciones para esa materia).
   // Lista no vacía = subset explícito.
   profesores: string[] | null;
+  // Sede específica para esta materia. Hace override de sedes_permitidas general.
+  sede?: string | null;
 }
 
 export interface PlanRequest {
@@ -54,6 +56,7 @@ export interface PlanRequest {
   dias_excluidos?: string[];
   franjas_excluidas?: FranjaExcluida[];
   sedes_permitidas?: string[];
+  max_bache_horas?: number | null;
   max_planes?: number;
 }
 
@@ -81,12 +84,14 @@ export interface FavoriteFilters {
   dias_excluidos: string[];
   franjas_excluidas: FranjaExcluida[];
   sedes_permitidas: string[];
+  max_bache_horas?: number | null;
   materias: Array<{
     codigo: number;
     nombre: string;
     catedra_id: number | null;
     catedra_label: string | null;
     profesores: string[] | null;
+    sede?: string | null;
   }>;
 }
 

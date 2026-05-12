@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, X, Loader2, Users, GraduationCap, Gem } from "lucide-react";
+import {
+  ChevronDown,
+  X,
+  Loader2,
+  Users,
+  GraduationCap,
+  Gem,
+  MapPin,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
@@ -11,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
+import { SEDES } from "@/lib/types";
 import type {
   CatedraOpcion,
   MateriaOpciones,
@@ -103,7 +112,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
       )}
 
       {opciones && (
-        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="mb-1 text-xs font-medium text-muted-foreground">
               Cátedra
@@ -134,6 +143,21 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
                 catedraLabel={catedraSeleccionada?.titular ?? null}
                 disabled={!isPaid}
                 onLockedClick={() => openPaywall("profesores")}
+              />
+            )}
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-medium text-muted-foreground">
+              Sede
+            </p>
+            {subLoading ? (
+              <Skeleton className="h-9 w-full rounded-lg" />
+            ) : (
+              <SedeDropdown
+                selected={seleccion.sede ?? null}
+                onSelect={(sede) => onChange({ ...seleccion, sede })}
+                disabled={!isPaid}
+                onLockedClick={() => openPaywall("filtros")}
               />
             )}
           </div>
@@ -349,6 +373,85 @@ function ProfesoresDropdown({
             })
           )}
         </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function SedeDropdown({
+  selected,
+  onSelect,
+  disabled,
+  onLockedClick,
+}: {
+  selected: string | null;
+  onSelect: (sede: string | null) => void;
+  disabled?: boolean;
+  onLockedClick?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const sel = SEDES.find((s) => s.codigo === selected);
+  const label = sel ? `${sel.nombre} (${sel.codigo})` : "Cualquiera";
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        onClick={onLockedClick}
+        title="Hacete Pro para forzar una sede"
+        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+      >
+        <MapPin className="size-3.5 shrink-0" />
+        <span className="flex-1 truncate">{label}</span>
+        <Gem className="size-3.5 shrink-0 text-[#EC990B]" />
+      </button>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+        >
+          <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate">{label}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-1" align="start">
+        <button
+          type="button"
+          onClick={() => {
+            onSelect(null);
+            setOpen(false);
+          }}
+          className={
+            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+            (selected === null ? "bg-accent font-medium" : "")
+          }
+        >
+          <span>Cualquier sede</span>
+        </button>
+        <Separator className="my-1" />
+        {SEDES.map((s) => (
+          <button
+            key={s.codigo}
+            type="button"
+            onClick={() => {
+              onSelect(s.codigo);
+              setOpen(false);
+            }}
+            className={
+              "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+              (selected === s.codigo ? "bg-accent font-medium" : "")
+            }
+          >
+            <span>{s.nombre}</span>
+            <span className="text-xs text-muted-foreground">{s.codigo}</span>
+          </button>
+        ))}
       </PopoverContent>
     </Popover>
   );

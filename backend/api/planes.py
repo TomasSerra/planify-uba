@@ -39,6 +39,13 @@ class MateriaSeleccionada(BaseModel):
             "teóricos/seminarios."
         ),
     )
+    sede: str | None = Field(
+        default=None,
+        description=(
+            "Sede específica para esta materia. Si se setea, hace override "
+            "de sedes_permitidas general. None = se aplica el filtro general."
+        ),
+    )
 
 
 class PlanRequest(BaseModel):
@@ -54,6 +61,14 @@ class PlanRequest(BaseModel):
     sedes_permitidas: list[str] = Field(
         default_factory=list,
         description="Sedes permitidas (HY/IN/SI/AV/EC). Vacío = todas.",
+    )
+    max_bache_horas: float | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Bache máximo permitido entre clases consecutivas del mismo día, "
+            "en horas. None = sin límite."
+        ),
     )
     max_planes: int = Field(20, ge=1, le=100)
 
@@ -99,6 +114,30 @@ def _curso_cumple_restricciones(
     if curso.dia and curso.hora_inicio and curso.hora_fin:
         for f in franjas:
             if curso.dia in f.dias and curso.hora_inicio < f.hora_fin and f.hora_inicio < curso.hora_fin:
+                return False
+    return True
+
+
+def _time_to_hours(t: time) -> float:
+    return t.hour + t.minute / 60 + t.second / 3600
+
+
+def _plan_respeta_bache(
+    cursos: Iterable[CursoEnPlan], max_bache_horas: float
+) -> bool:
+    """True si en ningún día del plan hay un hueco entre clases consecutivas
+    que supere max_bache_horas."""
+    by_day: dict[str, list[CursoEnPlan]] = defaultdict(list)
+    for c in cursos:
+        if c.dia and c.hora_inicio and c.hora_fin:
+            by_day[c.dia].append(c)
+    for day_cursos in by_day.values():
+        if len(day_cursos) <= 1:
+            continue
+        day_cursos.sort(key=lambda c: c.hora_inicio)
+        for a, b in zip(day_cursos, day_cursos[1:]):
+            gap = _time_to_hours(b.hora_inicio) - _time_to_hours(a.hora_fin)
+            if gap > max_bache_horas:
                 return False
     return True
 
@@ -299,10 +338,15 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
                 )
             ]
 
+        # Sede específica por materia hace override del filtro general.
+        sedes_efectivas = (
+            {seleccion.sede} if seleccion.sede else sedes_permitidas
+        )
+
         validas = [
             op for op in opciones
             if all(
-                _curso_cumple_restricciones(c, dias_excluidos, req.franjas_excluidas, sedes_permitidas)
+                _curso_cumple_restricciones(c, dias_excluidos, req.franjas_excluidas, sedes_efectivas)
                 for c in op.cursos
             )
         ]
@@ -327,10 +371,15 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
     for combo in _enumerar_combos_balanced(opciones_validas):
         total += 1
         cursos = [c for op in combo for c in op.cursos]
-        if not _hay_solapamiento(cursos):
-            planes.append(Plan(opciones=list(combo)))
-            if len(planes) >= pool_target:
-                break
+        if _hay_solapamiento(cursos):
+            continue
+        if req.max_bache_horas is not None and not _plan_respeta_bache(
+            cursos, req.max_bache_horas
+        ):
+            continue
+        planes.append(Plan(opciones=list(combo)))
+        if len(planes) >= pool_target:
+            break
 
     planes = _reorder_round_robin(planes, num_materias=len(opciones_validas))[
         : req.max_planes

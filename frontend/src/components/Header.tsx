@@ -16,6 +16,13 @@ const TABS = [
   { to: "/favoritos", label: "Planes guardados", icon: Heart },
 ];
 
+function resolveTabTo(to: string): string {
+  if (to !== "/") return to;
+  if (typeof window === "undefined") return to;
+  const saved = sessionStorage.getItem("horarios:last-home-search");
+  return saved ? `/${saved}` : "/";
+}
+
 function Tabs() {
   const { pathname } = useLocation();
   return (
@@ -25,7 +32,7 @@ function Tabs() {
         return (
           <Link
             key={to}
-            to={to}
+            to={resolveTabTo(to)}
             className={
               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors " +
               (active
@@ -58,7 +65,7 @@ function MobileBottomNav() {
           return (
             <Link
               key={to}
-              to={to}
+              to={resolveTabTo(to)}
               aria-label={label}
               className={
                 "flex flex-1 flex-col items-center gap-0.5 px-3 py-2 text-[11px] font-medium transition-colors " +
@@ -139,7 +146,7 @@ function UserMenu() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="relative flex cursor-pointer items-center gap-2 rounded-2xl border border-border bg-white py-1 pl-3 pr-1 transition-colors hover:bg-accent"
+            className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent sm:gap-2 sm:rounded-2xl sm:border sm:border-border sm:bg-white sm:py-1 sm:pl-3 sm:pr-1"
           >
             <div className="hidden flex-col leading-tight sm:flex text-left">
               <span className="text-xs text-foreground">{email}</span>

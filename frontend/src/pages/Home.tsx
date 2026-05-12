@@ -15,6 +15,8 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -293,10 +295,11 @@ function SaveFavoriteButton({
 const ALL_DIAS: string[] = [...DIAS];
 
 interface UrlState {
-  m: { c: number; ca: number | null; p: string[] | null }[];
+  m: { c: number; ca: number | null; p: string[] | null; se?: string | null }[];
   d: string[];
   f: FranjaExcluida[];
   s: string[];
+  b?: number | null;
 }
 
 function encodeUrlState(s: UrlState): string {
@@ -346,7 +349,14 @@ export function Home() {
   const [diasPermitidos, setDiasPermitidos] = useState<string[]>(ALL_DIAS);
   const [franjas, setFranjas] = useState<FranjaExcluida[]>([]);
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
+  const [maxBacheHoras, setMaxBacheHoras] = useState<number | null>(null);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
+  const [calendarioCompacto, setCalendarioCompacto] = useState<boolean>(
+    () => localStorage.getItem("calendarioCompacto") === "1"
+  );
+  useEffect(() => {
+    localStorage.setItem("calendarioCompacto", calendarioCompacto ? "1" : "0");
+  }, [calendarioCompacto]);
 
   // Hidratar materias + filtros desde ?q=… (URL compartible) y disparar
   // generación una sola vez cuando auth/sub terminan de cargar.
@@ -374,13 +384,16 @@ export function Home() {
           codigo: x.c,
           catedra_id: x.ca,
           profesores: x.p,
+          sede: x.se ?? null,
           nombre: byCodigo.get(x.c) ?? `Materia ${x.c}`,
         }));
+        const bache = decoded.b ?? null;
         setMaterias(seleccion);
         setDiasPermitidos(decoded.d);
         setFranjas(decoded.f);
         setSedesPermitidas(decoded.s);
-        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s);
+        setMaxBacheHoras(bache);
+        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s, bache);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -415,16 +428,18 @@ export function Home() {
   const currentSignature = useMemo(
     () =>
       JSON.stringify({
-        materias: materias.map(({ codigo, catedra_id, profesores }) => ({
+        materias: materias.map(({ codigo, catedra_id, profesores, sede }) => ({
           codigo,
           catedra_id,
           profesores,
+          sede: sede ?? null,
         })),
         diasPermitidos: [...diasPermitidos].sort(),
         franjas,
         sedesPermitidas: [...sedesPermitidas].sort(),
+        maxBacheHoras,
       }),
-    [materias, diasPermitidos, franjas, sedesPermitidas]
+    [materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras]
   );
 
   const sinCambios =
@@ -434,7 +449,8 @@ export function Home() {
     seleccion: SeleccionConNombre[],
     dias: string[],
     franjasExcl: FranjaExcluida[],
-    sedes: string[]
+    sedes: string[],
+    bache: number | null
   ) {
     if (seleccion.length === 0) return;
     setLoading(true);
@@ -448,14 +464,16 @@ export function Home() {
         : null;
       const data = await api.postPlanes(
         {
-          materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+          materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
             codigo,
             catedra_id,
             profesores,
+            sede: sede ?? null,
           })),
           dias_excluidos,
           franjas_excluidas: franjasExcl,
           sedes_permitidas: sedes,
+          max_bache_horas: bache,
           max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
         },
         token
@@ -463,55 +481,67 @@ export function Home() {
       scrollOnNextResultRef.current = true;
       setResultado(data);
       const sig = JSON.stringify({
-        materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+        materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
           codigo,
           catedra_id,
           profesores,
+          sede: sede ?? null,
         })),
         diasPermitidos: [...dias].sort(),
         franjas: franjasExcl,
         sedesPermitidas: [...sedes].sort(),
+        maxBacheHoras: bache,
       });
       setLastGeneratedSignature(sig);
       const filtersSnapshot: FavoriteFilters = {
         dias_excluidos,
         franjas_excluidas: franjasExcl,
         sedes_permitidas: sedes,
+        max_bache_horas: bache,
         materias: seleccion.map((m) => ({
           codigo: m.codigo,
           nombre: m.nombre,
           catedra_id: m.catedra_id,
           catedra_label: null,
           profesores: m.profesores,
+          sede: m.sede ?? null,
         })),
       };
       setLastGeneratedFilters(filtersSnapshot);
-      pushHistory({
-        request: {
-          materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
-            codigo,
-            catedra_id,
-            profesores,
-          })),
-          dias_excluidos,
-          franjas_excluidas: franjasExcl,
-          sedes_permitidas: sedes,
-          max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
-        },
-        filters: filtersSnapshot,
-        response: data,
-      });
+      if (data.planes.length > 0) {
+        pushHistory({
+          request: {
+            materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
+              codigo,
+              catedra_id,
+              profesores,
+              sede: sede ?? null,
+            })),
+            dias_excluidos,
+            franjas_excluidas: franjasExcl,
+            sedes_permitidas: sedes,
+            max_bache_horas: bache,
+            max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
+          },
+          filters: filtersSnapshot,
+          response: data,
+        });
+      }
       const q = encodeUrlState({
         m: seleccion.map((m) => ({
           c: m.codigo,
           ca: m.catedra_id,
           p: m.profesores,
+          se: m.sede ?? null,
         })),
         d: dias,
         f: franjasExcl,
         s: sedes,
+        b: bache,
       });
-      navigate(`/?q=${q}`, { replace: true });
+      const search = `?q=${q}`;
+      sessionStorage.setItem("horarios:last-home-search", search);
+      navigate(`/${search}`, { replace: true });
     } catch (e) {
       const msg = (e as Error).message;
       if (msg.startsWith("403")) {
@@ -533,7 +563,7 @@ export function Home() {
   }
 
   function generar() {
-    return runGenerate(materias, diasPermitidos, franjas, sedesPermitidas);
+    return runGenerate(materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras);
   }
 
   function restoreFromHistory(entry: PlanHistoryEntry) {
@@ -542,28 +572,33 @@ export function Home() {
       nombre: m.nombre,
       catedra_id: m.catedra_id,
       profesores: m.profesores,
+      sede: m.sede ?? null,
     }));
     const dias = ALL_DIAS.filter(
       (d) => !entry.filters.dias_excluidos.includes(d)
     );
+    const bache = entry.filters.max_bache_horas ?? null;
     setMaterias(seleccion);
     setDiasPermitidos(dias);
     setFranjas(entry.filters.franjas_excluidas);
     setSedesPermitidas(entry.filters.sedes_permitidas);
+    setMaxBacheHoras(bache);
     scrollOnNextResultRef.current = true;
     setResultado(entry.response);
     setPlanIdx(0);
     setError(null);
     setLastGeneratedSignature(
       JSON.stringify({
-        materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
+        materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
           codigo,
           catedra_id,
           profesores,
+          sede: sede ?? null,
         })),
         diasPermitidos: [...dias].sort(),
         franjas: entry.filters.franjas_excluidas,
         sedesPermitidas: [...entry.filters.sedes_permitidas].sort(),
+        maxBacheHoras: bache,
       })
     );
     setLastGeneratedFilters(entry.filters);
@@ -572,12 +607,16 @@ export function Home() {
         c: m.codigo,
         ca: m.catedra_id,
         p: m.profesores,
+        se: m.sede ?? null,
       })),
       d: dias,
       f: entry.filters.franjas_excluidas,
       s: entry.filters.sedes_permitidas,
+      b: bache,
     });
-    navigate(`/?q=${q}`, { replace: true });
+    const search = `?q=${q}`;
+    sessionStorage.setItem("horarios:last-home-search", search);
+    navigate(`/${search}`, { replace: true });
   }
 
   const planActual = resultado?.planes[planIdx] ?? null;
@@ -598,7 +637,7 @@ export function Home() {
 
       <main className="container space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto]">
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row">
             <HistorialPopover onRestore={restoreFromHistory} />
             <div className="relative min-w-0 flex-1">
               <Card className="flex flex-col lg:absolute lg:inset-0">
@@ -612,7 +651,7 @@ export function Home() {
             </div>
           </div>
 
-          <Card className="lg:row-span-2">
+          <Card className="lg:row-span-2 lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:flex-col lg:overflow-hidden">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <button
@@ -630,22 +669,29 @@ export function Home() {
                 </button>
                 {(diasPermitidos.length !== ALL_DIAS.length ||
                   franjas.length > 0 ||
-                  sedesPermitidas.length > 0) && (
+                  sedesPermitidas.length > 0 ||
+                  maxBacheHoras !== null) && (
                   <button
                     type="button"
                     onClick={() => {
                       setDiasPermitidos(ALL_DIAS);
                       setFranjas([]);
                       setSedesPermitidas([]);
+                      setMaxBacheHoras(null);
                     }}
                     className="text-sm font-medium leading-none text-primary hover:underline"
                   >
-                    Restablecer
+                    Restablecer todo
                   </button>
                 )}
               </div>
             </CardHeader>
-            <CardContent className={filtrosOpen ? "" : "hidden lg:block"}>
+            <CardContent
+              className={
+                (filtrosOpen ? "" : "hidden lg:block") +
+                " lg:flex lg:min-h-0 lg:flex-1 lg:flex-col"
+              }
+            >
               <RestriccionesPanel
                 diasPermitidos={diasPermitidos}
                 onDiasPermitidosChange={setDiasPermitidos}
@@ -653,6 +699,8 @@ export function Home() {
                 onFranjasChange={setFranjas}
                 sedesPermitidas={sedesPermitidas}
                 onSedesChange={setSedesPermitidas}
+                maxBacheHoras={maxBacheHoras}
+                onMaxBacheHorasChange={setMaxBacheHoras}
                 isPaid={isPaid}
                 isLoading={subLoading}
                 onUpgrade={() => openPaywall("filtros")}
@@ -723,12 +771,18 @@ export function Home() {
               <div>
                 <CardTitle>Calendario</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {resultado.total_generados} combinaciones evaluadas ·{" "}
                   {resultado.planes.length} plan
                   {resultado.planes.length === 1 ? "" : "es"} sin solapamientos
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex justify-center sm:flex-1">
+                <PlanNavigator
+                  index={planIdx}
+                  total={resultado.planes.length}
+                  onChange={setPlanIdx}
+                />
+              </div>
+              <div className="flex items-center gap-3">
                 {planActual && lastGeneratedFilters && (
                   <SaveFavoriteButton
                     plan={planActual}
@@ -737,15 +791,23 @@ export function Home() {
                     onLockedClick={() => openPaywall("favoritos")}
                   />
                 )}
-                <PlanNavigator
-                  index={planIdx}
-                  total={resultado.planes.length}
-                  onChange={setPlanIdx}
-                />
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="compacto-switch"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Compacto
+                  </Label>
+                  <Switch
+                    id="compacto-switch"
+                    checked={calendarioCompacto}
+                    onCheckedChange={setCalendarioCompacto}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <CalendarioPlan plan={planActual} />
+              <CalendarioPlan plan={planActual} compacto={calendarioCompacto} />
             </CardContent>
           </Card>
         )}

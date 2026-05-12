@@ -294,8 +294,10 @@ def _request_uses_filters(req: PlanRequest) -> bool:
     """Detecta si el request usa alguna feature Pro (filtros)."""
     if req.dias_excluidos or req.franjas_excluidas or req.sedes_permitidas:
         return True
+    if req.max_bache_horas is not None:
+        return True
     for m in req.materias:
-        if m.catedra_id is not None or m.profesores is not None:
+        if m.catedra_id is not None or m.profesores is not None or m.sede is not None:
             return True
     return False
 
@@ -320,7 +322,7 @@ def post_planes(
                     "usarlos."
                 ),
             )
-        max_allowed = 50 if is_paid else 10
+        max_allowed = 100 if is_paid else 30
         if req.max_planes > max_allowed:
             req.max_planes = max_allowed
         return armar_planes(conn, req)

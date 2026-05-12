@@ -1,5 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Plan, CursoEnPlan } from "@/lib/types";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Clock, DoorOpen, GraduationCap, MapPin, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const DIAS_DISPLAY = [
   { key: "lunes", short: "Lun" },
@@ -10,7 +17,8 @@ const DIAS_DISPLAY = [
   { key: "sabado", short: "Sáb" },
 ];
 
-const PIXELS_PER_HOUR = 32;
+const PIXELS_PER_HOUR_NORMAL = 32;
+const PIXELS_PER_HOUR_COMPACTO = 16;
 
 interface CursoConContexto extends CursoEnPlan {
   materia_codigo: number;
@@ -21,6 +29,7 @@ interface CursoConContexto extends CursoEnPlan {
 
 interface Props {
   plan: Plan | null;
+  compacto?: boolean;
 }
 
 // Paleta acorde al primario (variaciones de hue cercanas + neutros).
@@ -56,9 +65,123 @@ function formatHM(t: string | null): string {
   return t.slice(0, 5);
 }
 
-export function CalendarioPlan({ plan }: Props) {
+interface CursoBloqueProps {
+  curso: CursoConContexto;
+  compacto: boolean;
+  top: number;
+  height: number;
+}
+
+function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  const cancel = () => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  const onEnter = () => {
+    cancel();
+    setOpen(true);
+  };
+  const onLeave = () => {
+    cancel();
+    timer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  const bloque = (
+    <div
+      className={cn(
+        "absolute left-1 right-1 overflow-hidden rounded-md shadow-sm",
+        compacto
+          ? "flex items-center px-1.5 py-0 text-[10px]"
+          : "px-2 py-1.5 text-[11px]",
+        curso.materia_color
+      )}
+      style={{ top, height }}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
+      {compacto ? (
+        <div className="line-clamp-1 font-medium leading-tight">
+          {curso.materia_nombre}
+        </div>
+      ) : (
+        <>
+          <div className="line-clamp-1 font-semibold leading-tight">
+            {curso.materia_nombre}
+          </div>
+          <div className="opacity-90 leading-tight">
+            {formatTipo(curso.tipo, curso.codigo)} · {formatHM(curso.hora_inicio)}–
+            {formatHM(curso.hora_fin)}
+          </div>
+          {curso.aula && (
+            <div className="opacity-80 leading-tight">{curso.aula}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <Popover open={open}>
+      <PopoverTrigger asChild>{bloque}</PopoverTrigger>
+      <PopoverContent
+        className="w-auto min-w-[200px] max-w-[280px] p-3 text-xs"
+        side="right"
+        align="start"
+        sideOffset={6}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="space-y-1.5">
+          <div className="text-sm font-semibold">{curso.materia_nombre}</div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock className="size-3.5 shrink-0" />
+            <span>
+              {formatTipo(curso.tipo, curso.codigo)} ·{" "}
+              {formatHM(curso.hora_inicio)}–{formatHM(curso.hora_fin)}
+            </span>
+          </div>
+          {curso.aula && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <DoorOpen className="size-3.5 shrink-0" />
+              <span>Aula {curso.aula}</span>
+            </div>
+          )}
+          {curso.profesor && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <User className="size-3.5 shrink-0" />
+              <span>{curso.profesor}</span>
+            </div>
+          )}
+          {curso.sede && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" />
+              <span>{curso.sede}</span>
+            </div>
+          )}
+          {curso.catedra_titular && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <GraduationCap className="size-3.5 shrink-0" />
+              <span>Cátedra: {curso.catedra_titular}</span>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function CalendarioPlan({ plan, compacto = false }: Props) {
   const horaMin = 7;
   const horaMax = 23;
+  const PIXELS_PER_HOUR = compacto
+    ? PIXELS_PER_HOUR_COMPACTO
+    : PIXELS_PER_HOUR_NORMAL;
   const cursos = useMemo<CursoConContexto[]>(() => {
     if (!plan) return [];
     const cs: CursoConContexto[] = [];
@@ -105,10 +228,15 @@ export function CalendarioPlan({ plan }: Props) {
     }
   });
 
+  const minBloque = compacto ? 14 : 28;
+  const gridCols = compacto
+    ? "grid-cols-[72px_repeat(6,1fr)]"
+    : "grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]";
+
   return (
     <div className="overflow-auto max-h-[90dvh]">
       <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
-        <div className="grid grid-cols-[40px_repeat(6,1fr)] border-b border-border sm:grid-cols-[64px_repeat(6,1fr)]">
+        <div className={cn("grid border-b border-border", gridCols)}>
           <div className="p-3 text-xs font-medium text-muted-foreground" />
           {DIAS_DISPLAY.map((d) => (
             <div
@@ -120,23 +248,38 @@ export function CalendarioPlan({ plan }: Props) {
           ))}
         </div>
 
-        <div className="grid grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]">
-          {/* Columna de horas: una etiqueta más que bloques (incluye horaMax) */}
+        <div className={cn("grid", gridCols)}>
+          {/* Columna de horas */}
           <div
             className="relative border-r border-border"
             style={{ height: PIXELS_PER_HOUR * horas.length }}
           >
-            {Array.from({ length: horaMax - horaMin + 1 }, (_, i) => horaMin + i).map(
-              (h, i) => (
-                <div
-                  key={h}
-                  className="absolute right-0 flex -translate-y-1/2 justify-end pr-1 text-[10px] font-medium text-muted-foreground sm:pr-2"
-                  style={{ top: i * PIXELS_PER_HOUR }}
-                >
-                  {String(h).padStart(2, "0")}:00
-                </div>
-              )
-            )}
+            {compacto
+              ? horas.map((h, i) => (
+                  <div
+                    key={h}
+                    className="absolute inset-x-0 flex items-center justify-end pr-1.5 text-[9px] font-medium leading-none text-muted-foreground"
+                    style={{
+                      top: i * PIXELS_PER_HOUR,
+                      height: PIXELS_PER_HOUR,
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}:00 -{" "}
+                    {String(h + 1).padStart(2, "0")}:00
+                  </div>
+                ))
+              : Array.from(
+                  { length: horaMax - horaMin + 1 },
+                  (_, i) => horaMin + i
+                ).map((h, i) => (
+                  <div
+                    key={h}
+                    className="absolute right-0 flex -translate-y-1/2 justify-end pr-1 text-[10px] font-medium text-muted-foreground sm:pr-2"
+                    style={{ top: i * PIXELS_PER_HOUR }}
+                  >
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                ))}
           </div>
 
           {DIAS_DISPLAY.map((d) => {
@@ -161,28 +304,18 @@ export function CalendarioPlan({ plan }: Props) {
                   const end = parseTime(c.hora_fin);
                   if (start === null || end === null) return null;
                   const top = (start - horaMin) * PIXELS_PER_HOUR;
-                  const height = Math.max(28, (end - start) * PIXELS_PER_HOUR);
+                  const height = Math.max(
+                    minBloque,
+                    (end - start) * PIXELS_PER_HOUR
+                  );
                   return (
-                    <div
+                    <CursoBloque
                       key={c.id}
-                      className={
-                        "absolute left-1 right-1 overflow-hidden rounded-md px-2 py-1.5 text-[11px] shadow-sm " +
-                        c.materia_color
-                      }
-                      style={{ top, height }}
-                      title={`${c.materia_nombre} — ${formatTipo(c.tipo, c.codigo)} — ${c.aula ?? ""}`}
-                    >
-                      <div className="line-clamp-2 font-semibold leading-tight">
-                        {c.materia_nombre}
-                      </div>
-                      <div className="opacity-90 leading-tight">
-                        {formatTipo(c.tipo, c.codigo)} · {formatHM(c.hora_inicio)}–
-                        {formatHM(c.hora_fin)}
-                      </div>
-                      {c.aula && (
-                        <div className="opacity-80 leading-tight">{c.aula}</div>
-                      )}
-                    </div>
+                      curso={c}
+                      compacto={compacto}
+                      top={top}
+                      height={height}
+                    />
                   );
                 })}
               </div>

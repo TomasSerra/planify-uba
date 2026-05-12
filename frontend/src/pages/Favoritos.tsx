@@ -69,13 +69,20 @@ function filtrosChips(fav: Favorite): string[] {
     );
     out.push("Sede: " + labels.join(", "));
   }
+  if (f.max_bache_horas != null) {
+    out.push(`Bache ≤ ${f.max_bache_horas}h`);
+  }
   for (const m of f.materias) {
-    if (m.catedra_id !== null || (m.profesores && m.profesores.length > 0)) {
-      const partes: string[] = [];
-      if (m.catedra_id !== null) partes.push("cátedra fija");
-      if (m.profesores && m.profesores.length > 0) {
-        partes.push(`${m.profesores.length} prof.`);
-      }
+    const partes: string[] = [];
+    if (m.catedra_id !== null) partes.push("cátedra fija");
+    if (m.profesores && m.profesores.length > 0) {
+      partes.push(`${m.profesores.length} prof.`);
+    }
+    if (m.sede) {
+      const sede = SEDES.find((x) => x.codigo === m.sede)?.nombre ?? m.sede;
+      partes.push(`sede ${sede}`);
+    }
+    if (partes.length > 0) {
       out.push(`${m.nombre}: ${partes.join(", ")}`);
     }
   }
@@ -100,7 +107,7 @@ function FavoritoCard({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex flex-1 items-center gap-3 text-left"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
           <ChevronDown
             className={

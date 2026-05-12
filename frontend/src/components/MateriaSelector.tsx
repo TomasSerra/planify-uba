@@ -91,7 +91,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
 
   function add(m: MateriaListItem) {
     onChange([
-      { codigo: m.codigo, nombre: m.nombre, catedra_id: null, profesores: null },
+      { codigo: m.codigo, nombre: m.nombre, catedra_id: null, profesores: null, sede: null },
       ...selected,
     ]);
     setOpen(false);

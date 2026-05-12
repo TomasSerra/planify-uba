@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -85,14 +85,52 @@ function PaywallDialog({
   const [initPoint, setInitPoint] = useState<string | null>(null);
   const [loadingFor, setLoadingFor] = useState<"redirect" | "qr" | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const redirectStartedAtRef = useRef<number | null>(null);
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!open) {
       setInitPoint(null);
       setShowQR(false);
       setLoadingFor(null);
+      redirectStartedAtRef.current = null;
+      if (safetyTimeoutRef.current !== null) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
     }
   }, [open]);
+
+  // Si el usuario va a MP (o abre el QR en otra tab) y vuelve sin pagar,
+  // el botón puede quedar en loading. visibilitychange + timeout de seguridad
+  // resetean el estado cuando la tab vuelve a estar visible.
+  useEffect(() => {
+    if (loadingFor === null) {
+      redirectStartedAtRef.current = null;
+      if (safetyTimeoutRef.current !== null) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
+      return;
+    }
+    redirectStartedAtRef.current = Date.now();
+    safetyTimeoutRef.current = setTimeout(() => setLoadingFor(null), 10_000);
+    function onVisibility() {
+      if (document.visibilityState !== "visible") return;
+      const started = redirectStartedAtRef.current;
+      if (started === null) return;
+      if (Date.now() - started < 800) return;
+      setLoadingFor(null);
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (safetyTimeoutRef.current !== null) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
+    };
+  }, [loadingFor]);
 
   async function fetchInitPoint(): Promise<string | null> {
     if (initPoint) return initPoint;

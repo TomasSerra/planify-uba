@@ -1,4 +1,15 @@
-import { Plus, Trash2, MapPin, CalendarCheck, Clock, Check, Gem } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  MapPin,
+  CalendarCheck,
+  Clock,
+  Check,
+  Gem,
+  Hourglass,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,14 +18,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DIAS, SEDES, type FranjaExcluida } from "@/lib/types";
 
-const DIA_LABELS: Record<string, string> = {
-  lunes: "Lunes",
-  martes: "Martes",
-  miercoles: "Miércoles",
-  jueves: "Jueves",
-  viernes: "Viernes",
-  sabado: "Sábado",
-};
 const DIA_LABELS_SHORT: Record<string, string> = {
   lunes: "Lun",
   martes: "Mar",
@@ -34,6 +37,9 @@ interface Props {
   sedesPermitidas: string[];
   onSedesChange: (sedes: string[]) => void;
 
+  maxBacheHoras: number | null;
+  onMaxBacheHorasChange: (h: number | null) => void;
+
   isPaid: boolean;
   isLoading?: boolean;
   onUpgrade?: () => void;
@@ -46,6 +52,8 @@ export function RestriccionesPanel({
   onFranjasChange,
   sedesPermitidas,
   onSedesChange,
+  maxBacheHoras,
+  onMaxBacheHorasChange,
   isPaid,
   isLoading,
   onUpgrade,
@@ -123,23 +131,25 @@ export function RestriccionesPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
       {!isPaid && (
-        <div className="flex items-start gap-3 rounded-lg border border-[#EC990B]/40 bg-[#EC990B]/10 px-4 py-3">
-          <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
-          <div className="flex-1 text-sm">
-            <p className="font-medium text-foreground">
-              Filtros disponibles solo para Pro
-            </p>
-            <p className="mt-0.5 text-muted-foreground">
-              Hacete Pro para filtrar por días, franjas horarias y sedes.
-            </p>
+        <div className="flex flex-col gap-3 rounded-lg border border-[#EC990B]/40 bg-[#EC990B]/10 px-4 py-3 sm:flex-row sm:items-start">
+          <div className="flex flex-1 items-start gap-3">
+            <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">
+                Filtros disponibles solo para Pro
+              </p>
+              <p className="mt-0.5 text-muted-foreground">
+                Hacete Pro para filtrar por días, franjas horarias y sedes.
+              </p>
+            </div>
           </div>
           {onUpgrade && (
             <Button
               size="sm"
               onClick={onUpgrade}
-              className="shrink-0 bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+              className="w-full shrink-0 bg-[#EC990B] text-white hover:bg-[#EC990B]/90 sm:w-auto"
             >
               Hacete Pro
             </Button>
@@ -147,6 +157,7 @@ export function RestriccionesPanel({
         </div>
       )}
 
+      <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
       <div
         className={
           "space-y-6 " +
@@ -176,7 +187,7 @@ export function RestriccionesPanel({
                 }
               >
                 {active && <Check className="size-3.5" strokeWidth={3} />}
-                {DIA_LABELS[dia]}
+                {DIA_LABELS_SHORT[dia]}
               </button>
             );
           })}
@@ -223,7 +234,7 @@ export function RestriccionesPanel({
                         type="button"
                         onClick={() => toggleFranjaDia(i, d)}
                         className={
-                          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors " +
+                          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
                           (active
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-white text-muted-foreground hover:bg-accent")
@@ -281,7 +292,7 @@ export function RestriccionesPanel({
             <button
               type="button"
               onClick={() => onSedesChange([])}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs font-medium text-primary hover:underline"
             >
               Limpiar
             </button>
@@ -306,6 +317,81 @@ export function RestriccionesPanel({
           ))}
         </div>
       </section>
+
+      <Separator />
+
+      {/* Bache máximo */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Hourglass className="size-4 text-muted-foreground" />
+            <Label className="text-sm">Bache máximo entre clases</Label>
+          </div>
+          {maxBacheHoras !== null && (
+            <button
+              type="button"
+              onClick={() => onMaxBacheHorasChange(null)}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Descartar planes con un hueco mayor a este valor entre clases
+          consecutivas del mismo día.
+        </p>
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-28 items-stretch overflow-hidden rounded-lg border border-input bg-white">
+            <Input
+              type="number"
+              min={0}
+              step={0.5}
+              placeholder="Sin límite"
+              value={maxBacheHoras ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") {
+                  onMaxBacheHorasChange(null);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isFinite(n) && n >= 0) onMaxBacheHorasChange(n);
+              }}
+              className="h-full flex-1 rounded-none border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
+            />
+            <div className="flex flex-col border-l border-input">
+              <button
+                type="button"
+                aria-label="Aumentar"
+                onClick={() =>
+                  onMaxBacheHorasChange(
+                    Math.max(0, (maxBacheHoras ?? 0) + 0.5)
+                  )
+                }
+                className="flex flex-1 items-center justify-center px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ChevronUp className="size-3" strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                aria-label="Disminuir"
+                onClick={() =>
+                  onMaxBacheHorasChange(
+                    Math.max(0, (maxBacheHoras ?? 0) - 0.5)
+                  )
+                }
+                disabled={(maxBacheHoras ?? 0) <= 0}
+                className="flex flex-1 items-center justify-center border-t border-input px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <ChevronDown className="size-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+          <span className="text-sm text-muted-foreground">horas</span>
+        </div>
+      </section>
+      </div>
       </div>
     </div>
   );

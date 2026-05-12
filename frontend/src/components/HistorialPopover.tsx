@@ -56,7 +56,7 @@ export function HistorialPopover({
           <Clock className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2rem))] p-2">
+      <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-2 sm:w-[20rem]">
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Historial · últimos {entries.length}
         </div>
