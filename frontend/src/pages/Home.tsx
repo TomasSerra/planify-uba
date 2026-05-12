@@ -351,6 +351,8 @@ export function Home() {
   // Hidratar materias + filtros desde ?q=… (URL compartible) y disparar
   // generación una sola vez cuando auth/sub terminan de cargar.
   const urlLoadedRef = useRef(false);
+  const calendarioRef = useRef<HTMLDivElement>(null);
+  const scrollOnNextResultRef = useRef(false);
   const { isLoading: authLoading } = useAuth0();
   useEffect(() => {
     if (urlLoadedRef.current) return;
@@ -387,6 +389,20 @@ export function Home() {
   }, [authLoading, subLoading, location.pathname, location.search]);
 
   const [resultado, setResultado] = useState<PlanResponse | null>(null);
+
+  useEffect(() => {
+    if (
+      scrollOnNextResultRef.current &&
+      resultado &&
+      resultado.planes.length > 0
+    ) {
+      scrollOnNextResultRef.current = false;
+      calendarioRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [resultado]);
   const [planIdx, setPlanIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -444,6 +460,7 @@ export function Home() {
         },
         token
       );
+      scrollOnNextResultRef.current = true;
       setResultado(data);
       const sig = JSON.stringify({
         materias: seleccion.map(({ codigo, catedra_id, profesores }) => ({
@@ -533,6 +550,7 @@ export function Home() {
     setDiasPermitidos(dias);
     setFranjas(entry.filters.franjas_excluidas);
     setSedesPermitidas(entry.filters.sedes_permitidas);
+    scrollOnNextResultRef.current = true;
     setResultado(entry.response);
     setPlanIdx(0);
     setError(null);
@@ -700,7 +718,7 @@ export function Home() {
         )}
 
         {resultado && resultado.planes.length > 0 && (
-          <Card>
+          <Card ref={calendarioRef}>
             <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Calendario</CardTitle>

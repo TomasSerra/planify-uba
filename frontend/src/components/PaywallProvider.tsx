@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Filter,
   GraduationCap,
@@ -8,6 +9,7 @@ import {
   Loader2,
   LogIn,
   Gem,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,22 +82,70 @@ function PaywallDialog({
   const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } =
     useAuth0();
   const showAlert = useAlert();
-  const [loading, setLoading] = useState(false);
+  const [initPoint, setInitPoint] = useState<string | null>(null);
+  const [loadingFor, setLoadingFor] = useState<"redirect" | "qr" | null>(null);
+  const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setInitPoint(null);
+      setShowQR(false);
+      setLoadingFor(null);
+    }
+  }, [open]);
+
+  async function fetchInitPoint(): Promise<string | null> {
+    if (initPoint) return initPoint;
+    let token: string;
+    try {
+      token = await getAccessTokenSilently();
+    } catch {
+      // Sesión vieja sin refresh token (o cookies de terceros bloqueadas):
+      // forzar re-login. Al volver del callback el refresh token ya está.
+      await loginWithRedirect({
+        authorizationParams: { prompt: "login" },
+        appState: { returnTo: window.location.pathname },
+      });
+      return null;
+    }
+    const { init_point } = await api.postCheckout(token);
+    setInitPoint(init_point);
+    return init_point;
+  }
 
   async function pagar() {
-    setLoading(true);
+    setLoadingFor("redirect");
     try {
-      const token = await getAccessTokenSilently();
-      if (!token) throw new Error("No token");
-      const { init_point } = await api.postCheckout(token);
-      window.location.href = init_point;
+      const ip = await fetchInitPoint();
+      if (ip) window.location.href = ip;
     } catch (e) {
-      setLoading(false);
       showAlert({
         variant: "error",
         title: "No se pudo iniciar el pago",
         message: (e as Error).message,
       });
+    } finally {
+      setLoadingFor(null);
+    }
+  }
+
+  async function togglePagoMobile() {
+    if (showQR) {
+      setShowQR(false);
+      return;
+    }
+    setLoadingFor("qr");
+    try {
+      const ip = await fetchInitPoint();
+      if (ip) setShowQR(true);
+    } catch (e) {
+      showAlert({
+        variant: "error",
+        title: "No se pudo iniciar el pago",
+        message: (e as Error).message,
+      });
+    } finally {
+      setLoadingFor(null);
     }
   }
 
@@ -133,9 +183,9 @@ function PaywallDialog({
               size="lg"
               className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
               onClick={pagar}
-              disabled={loading}
+              disabled={loadingFor !== null}
             >
-              {loading ? (
+              {loadingFor === "redirect" ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <img src={mpIcon} alt="" className="h-4 w-auto" />
@@ -146,6 +196,37 @@ function PaywallDialog({
               Pago único por {SUBSCRIPTION_MONTHS} meses. No es una suscripción
               automática.
             </p>
+            <div className="hidden md:block">
+              <div className="my-2 flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">O</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={togglePagoMobile}
+                disabled={loadingFor !== null}
+              >
+                {loadingFor === "qr" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <QrCode className="size-4" />
+                )}
+                Pagar desde tu celular
+              </Button>
+              {showQR && initPoint && (
+                <div className="flex flex-col items-center gap-2 pt-3">
+                  <div className="rounded-lg border bg-white p-3">
+                    <QRCodeSVG value={initPoint} size={160} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Escaneá con la cámara del celular
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <Button
