@@ -11,6 +11,9 @@ venv/
 .env
 .env.local
 
+# Firebase Admin service account (montado en /run/secrets en Docker)
+backend/firebase-sa.json
+
 # OS
 .DS_Store
 Thumbs.db

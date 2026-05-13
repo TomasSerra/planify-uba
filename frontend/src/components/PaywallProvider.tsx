@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/lib/useAuth";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Filter,
@@ -79,8 +79,7 @@ function PaywallDialog({
   reason: PaywallReason | null;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } =
-    useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, openLogin } = useAuth();
   const showAlert = useAlert();
   const [initPoint, setInitPoint] = useState<string | null>(null);
   const [loadingFor, setLoadingFor] = useState<"redirect" | "qr" | null>(null);
@@ -138,12 +137,7 @@ function PaywallDialog({
     try {
       token = await getAccessTokenSilently();
     } catch {
-      // Sesión vieja sin refresh token (o cookies de terceros bloqueadas):
-      // forzar re-login. Al volver del callback el refresh token ya está.
-      await loginWithRedirect({
-        authorizationParams: { prompt: "login" },
-        appState: { returnTo: window.location.pathname },
-      });
+      openLogin("signin");
       return null;
     }
     const { init_point } = await api.postCheckout(token);
@@ -270,7 +264,7 @@ function PaywallDialog({
           <Button
             size="lg"
             className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            onClick={() => loginWithRedirect()}
+            onClick={() => openLogin("signin")}
           >
             <LogIn className="size-4" />
             Iniciar sesión

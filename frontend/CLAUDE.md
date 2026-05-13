@@ -1,23 +1,36 @@
 # Frontend — Vite + React + TypeScript
 
-SPA de una sola página (`Home.tsx`) que consume la API de FastAPI. shadcn/ui sobre Tailwind con primario `#861f5c`.
+SPA con tres rutas (`Home`, `Favoritos`, `PlanesEstudio`) que consume la API de FastAPI. shadcn/ui sobre Tailwind con primario `#861f5c`. Hosteada en Vercel.
 
 ## Estructura
 
 ```
 frontend/src/
-  main.tsx               entrypoint
-  App.tsx                renderiza <Home />
-  pages/Home.tsx         única pantalla: selector + filtros + calendario
+  main.tsx               entrypoint (QueryClient + Router + AlertProvider + AuthProvider)
+  App.tsx                rutas (Home, Favoritos, PlanesEstudio, /pago-exitoso, /pago-error)
+  pages/
+    Home.tsx             selector + filtros + calendario
+    Favoritos.tsx        listado de planes guardados (Pro)
+    PlanesEstudio.tsx
   components/
+    AuthProvider.tsx     React Context + monta <AuthDialog> global
+    AuthDialog.tsx       modal login/signup sobre la app (sin nueva ruta)
+    PaywallProvider.tsx  dialog de pago (MP)
+    Header.tsx           tabs + user menu + boton "Hacete Pro"
     MateriaSelector.tsx  popover de búsqueda + lista de materias agregadas
     MateriaCard.tsx      card por materia con dropdowns Cátedra y Profesores
-    RestriccionesPanel.tsx  días, franjas, sedes (será gateado por paywall)
+    RestriccionesPanel.tsx  días, franjas, sedes (gateado por paywall)
     CalendarioPlan.tsx   grilla 7-23 hs × días, bloques absolute-positioned
     PlanNavigator.tsx    flechas + "Plan X de N"
-    ui/                  shadcn primitives (button, popover, command, checkbox, ...)
+    ui/                  shadcn primitives (button, popover, command, dialog, input, label, ...)
   lib/
     api.ts               fetch wrapper, baseURL desde VITE_API_URL
+    firebase.ts          initializeApp + getAuth + GoogleAuthProvider
+    authContext.ts       tipos y React Context de auth
+    useAuth.ts           hook { user, isAuthenticated, isLoading, getAccessTokenSilently, logout, openLogin }
+    useSubscription.ts   query a /me/subscription, expone { isPaid, validUntil, isLoading }
+    paywall.ts           hook para abrir el PaywallDialog
+    alert.tsx            dialog de alert global
     types.ts             tipos compartidos con el backend (mantener en sync)
     utils.ts             cn(), helpers
   index.css              tailwind + design tokens (CSS vars)
@@ -27,7 +40,19 @@ tailwind.config.ts
 ## Cómo corre
 
 - `npm run dev` (vite, port 5173). En docker el volumen `./frontend:/app` da HMR.
-- `VITE_API_URL=http://localhost:8000` (default si falta).
+- Envs (ver `.env.example`):
+  - `VITE_API_URL=http://localhost:8000` (default si falta).
+  - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` (de Firebase Console → Project settings → General → Web app).
+- En Vercel los `VITE_FIREBASE_*` se setean como project envs. La `apiKey` de Firebase Web es pública por diseño (vive en el bundle); el control real está en "Authorized domains" de la consola.
+
+## Auth
+
+- `<AuthProvider>` (en [main.tsx](src/main.tsx)) inicializa Firebase y suscribe `onAuthStateChanged`. Mantiene `user`, `isLoading`, `openLogin`.
+- Hooks: `useAuth()` para acceder al estado, `useSubscription()` para saber si es Pro.
+- Login UX: botón "Iniciar sesión" llama `openLogin("signin")` → abre `<AuthDialog>` (modal, sin redirect). El modal tiene tabs `signin | signup`. Google usa `signInWithPopup` con fallback a `signInWithRedirect` si el popup es bloqueado.
+- Token a la API: `await getAccessTokenSilently()` (en realidad `auth.currentUser.getIdToken()`) → se manda como `Authorization: Bearer <idToken>`. Firebase auto-refresca el token.
+- Logout: `logout()` (acepta y descarta cualquier arg legacy).
+- Persistencia: Firebase usa IndexedDB → compartido entre tabs automáticamente.
 
 ## Convenciones
 
@@ -54,8 +79,4 @@ Si igual necesitás verificar:
 - `mcp__Claude_Preview__preview_start` con `name: "horarios-frontend"` (definido en `.claude/launch.json`).
 - Si Docker está usando el puerto 5173, parar el container `horarios-frontend` antes (`docker stop horarios-frontend`) y restaurarlo cuando termines.
 - El backend debe estar corriendo (Docker o local) para que las requests funcionen.
-- CORS solo permite `localhost:5173` y `localhost:3000` (ver [backend/api/main.py:65-69](../backend/api/main.py)).
-
-## Roadmap relevante
-
-Auth + paywall + favoritos: agrega `@clerk/clerk-react`, `@tanstack/react-query`, `react-router-dom`, hooks `useSubscription`, `<PaywallOverlay>`, páginas `/favoritos` y `/pago-exitoso`. Detalle en [auth-paywall-plan.md](../auth-paywall-plan.md).
+- CORS solo permite `localhost:5173` y `localhost:3000` (ver [backend/api/main.py:65-69](../backend/api/main.py)). Para prod (Vercel) agregar el dominio ahí.

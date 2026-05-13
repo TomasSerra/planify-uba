@@ -1,6 +1,6 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
+import { useAuth } from "./useAuth";
 
 export function useSubscription() {
   const {
@@ -8,10 +8,10 @@ export function useSubscription() {
     isAuthenticated,
     isLoading: userLoading,
     getAccessTokenSilently,
-  } = useAuth0();
+  } = useAuth();
 
   const query = useQuery({
-    queryKey: ["subscription", user?.sub],
+    queryKey: ["subscription", user?.uid],
     enabled: !userLoading && isAuthenticated,
     queryFn: async () => {
       const token = await getAccessTokenSilently();

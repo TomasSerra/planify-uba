@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/lib/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -165,8 +165,8 @@ export function Favoritos() {
     isAuthenticated,
     isLoading: authLoading,
     getAccessTokenSilently,
-    loginWithRedirect,
-  } = useAuth0();
+    openLogin,
+  } = useAuth();
   const openPaywall = usePaywall();
   const { isPaid, isLoading: subLoading } = useSubscription();
   const queryClient = useQueryClient();
@@ -231,7 +231,7 @@ export function Favoritos() {
           <Card>
             <CardContent className="flex flex-col items-center gap-4 py-12 text-center text-sm text-muted-foreground">
               <p>Iniciá sesión para ver tus planes guardados.</p>
-              <Button onClick={() => loginWithRedirect()}>
+              <Button onClick={() => openLogin("signin")}>
                 <LogIn className="size-4" />
                 Iniciar sesión
               </Button>

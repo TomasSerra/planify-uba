@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/lib/useAuth";
 import {
   GraduationCap,
   Gem,
@@ -117,8 +117,7 @@ function PayChip() {
 }
 
 function UserMenu() {
-  const { user, isAuthenticated, isLoading, loginWithRedirect, logout } =
-    useAuth0();
+  const { user, isAuthenticated, isLoading, openLogin, logout } = useAuth();
   const { isPaid, validUntil } = useSubscription();
   const email = user?.email ?? "";
   const initial = email.slice(0, 1).toUpperCase() || "?";
@@ -134,7 +133,7 @@ function UserMenu() {
 
   if (!isAuthenticated) {
     return (
-      <Button size="sm" onClick={() => loginWithRedirect()}>
+      <Button size="sm" onClick={() => openLogin("signin")}>
         <LogIn className="size-4" />
         Iniciar sesión
       </Button>
@@ -165,9 +164,9 @@ function UserMenu() {
               )}
             </div>
             <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              {user?.picture ? (
+              {user?.photoURL ? (
                 <img
-                  src={user.picture}
+                  src={user.photoURL}
                   alt={email}
                   className="size-full object-cover"
                   referrerPolicy="no-referrer"
@@ -192,11 +191,7 @@ function UserMenu() {
           </div>
           <button
             type="button"
-            onClick={() =>
-              logout({
-                logoutParams: { returnTo: window.location.origin },
-              })
-            }
+            onClick={() => logout()}
             className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
           >
             <LogOut className="size-4" /> Cerrar sesión

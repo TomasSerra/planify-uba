@@ -1,6 +1,6 @@
 # Backend — FastAPI + Postgres
 
-API que sirve materias/cátedras/cursos y arma planes de cursada. Scraper aparte que siembra la DB.
+API que sirve materias/cátedras/cursos y arma planes de cursada. Scraper aparte que siembra la DB. Auth con Firebase, pagos con Mercado Pago.
 
 ## Estructura
 
@@ -8,6 +8,10 @@ API que sirve materias/cátedras/cursos y arma planes de cursada. Scraper aparte
 backend/
   api/
     main.py       endpoints + lifespan + CORS
+    auth.py       dependency current_user / optional_user (firebase-admin)
+    subs.py       /me/subscription + helper has_active_subscription
+    pagos.py      /pagos/checkout + webhook de Mercado Pago
+    favoritos.py  CRUD de favoritos (Pro)
     planes.py     algoritmo de armado (producto cartesiano + filtros + overlap check)
     models.py     pydantic models compartidos
     db.py         psycopg connection pool
@@ -21,26 +25,46 @@ backend/
   schema.sql      DDL ejecutado al crear la DB
   Dockerfile      uvicorn --reload --reload-dir /app/api
   requirements.txt
+  firebase-sa.json  (gitignored) service account de Firebase Admin para dev local
 ```
 
 ## Cómo corre
 
 - `uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/api`. El volumen `./backend/api:/app/api` permite hot reload sin rebuild.
 - Conexión via `DATABASE_URL` (psycopg pool, abierto en el lifespan).
+- Auth: `firebase_admin.initialize_app()` lee `GOOGLE_APPLICATION_CREDENTIALS` (path al service-account JSON). En Docker está montado en `/run/secrets/firebase-sa.json`. En Render se sube como Secret File.
 
-## Endpoints (estado actual)
+## Hosting
 
-| Método | Path | Notas |
-| --- | --- | --- |
-| GET | `/health` | Healthcheck DB. |
-| GET | `/materias?q=` | Lista de materias con filtro substring. |
-| GET | `/materias/{codigo}` | Materia + cátedras. |
-| GET | `/materias/{codigo}/opciones` | Materia + cátedras + profesores únicos por cátedra. Lo consume `MateriaCard.tsx`. |
-| GET | `/catedras/{id}` | Cátedra + todos sus cursos con `obliga_a` resuelto. |
-| GET | `/cursos?...&incluir_obliga=` | Búsqueda flexible. |
-| POST | `/planes` | Body `PlanRequest` (`materias[]`, `dias_excluidos`, `franjas_excluidas`, `sedes_permitidas`, `max_planes`). Devuelve `PlanResponse`. |
+API en **Render** (Docker, mismo `Dockerfile`). DB en **Neon** Postgres (`DATABASE_URL` con `sslmode=require`). Secrets del API en Render: `DATABASE_URL`, `GOOGLE_APPLICATION_CREDENTIALS`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`, `APP_URL_BACKEND`.
 
-CORS: `localhost:5173` y `localhost:3000`. Sumar nuevos orígenes (prod) en [api/main.py:65-69](api/main.py).
+## Endpoints
+
+| Método | Path | Auth | Notas |
+| --- | --- | --- | --- |
+| GET | `/health` | — | Healthcheck DB. |
+| GET | `/materias?q=` | — | Lista de materias con filtro substring. |
+| GET | `/materias/{codigo}` | — | Materia + cátedras. |
+| GET | `/materias/{codigo}/opciones` | — | Materia + cátedras + profesores únicos. Lo consume `MateriaCard.tsx`. |
+| GET | `/catedras/{id}` | — | Cátedra + todos sus cursos con `obliga_a` resuelto. |
+| GET | `/cursos?...&incluir_obliga=` | — | Búsqueda flexible. |
+| POST | `/planes` | `optional_user` | Si el usuario es Pro, aplica filtros completos y cap 100. Si no, anula filtros y capea a 10. |
+| GET | `/me/subscription` | `current_user` | Estado de suscripción del usuario. |
+| POST | `/pagos/checkout` | `current_user` | Crea preferencia de MP, devuelve `init_point`. |
+| GET | `/pagos/{external_reference}/status` | — | Polling público de status (idempotente). |
+| POST | `/pagos/webhook` | — | Webhook de MP (valida firma `MP_WEBHOOK_SECRET`). |
+| GET/POST/DELETE | `/favoritos` | `current_user` | CRUD; gateado a Pro adentro. |
+
+CORS: `localhost:5173` y `localhost:3000`. Sumar nuevos orígenes (Vercel) en [api/main.py:65-69](api/main.py).
+
+## Auth (firebase-admin)
+
+[api/auth.py](api/auth.py):
+
+- `firebase_admin.initialize_app()` se llama una vez al import. Usa Application Default Credentials → `GOOGLE_APPLICATION_CREDENTIALS`.
+- `current_user(authorization: str = Header(...)) -> AuthUser`: parsea `Bearer <idToken>`, llama `fb_auth.verify_id_token(token)`, devuelve `AuthUser(id=decoded["uid"])`. Tira 401 ante token inválido / expirado.
+- `optional_user`: devuelve `None` si no hay header, sino delega a `current_user`.
+- `AuthUser.id` es el `uid` de Firebase como string opaco. Se almacena en columnas llamadas `clerk_user_id` (nombre histórico).
 
 ## Generador de planes ([api/planes.py](api/planes.py))
 
@@ -59,7 +83,7 @@ Notas:
 - Tipos de respuesta usan Pydantic v2. Si agregás campos, actualizar también `frontend/src/lib/types.ts`.
 - Las queries usan psycopg `dict_row` (filas son dicts). Mantener ese estilo.
 - Idempotencia en scraper: cualquier fix debe seguir siendo seguro de re-correr (`make scrape`).
-- No agregar `users` u otra tabla de identidad a mano: el plan es usar Clerk con `clerk_user_id` como FK lógica (ver [auth-paywall-plan.md](../auth-paywall-plan.md)).
+- La columna `clerk_user_id` en `subscriptions` y `favorite_plans` se llama así por historia (se planeó usar Clerk). Hoy almacena el `uid` de Firebase. No renombrar — el cambio requeriría una migración y no aporta nada funcional.
 - Hot reload solo recoge cambios en `/app/api`. Cambios al scraper requieren re-build del container.
 
 ## Cambios típicos

@@ -24,8 +24,7 @@ services:
     container_name: horarios-api
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/horarios
-      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
-      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-sa.json
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       MP_SKIP_SIGNATURE: ${MP_SKIP_SIGNATURE:-}
@@ -38,6 +37,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/api:/app/api
+      - ./backend/firebase-sa.json:/run/secrets/firebase-sa.json:ro
     depends_on:
       db:
         condition: service_healthy
@@ -66,9 +66,9 @@ services:
     container_name: horarios-frontend
     environment:
       VITE_API_URL: http://localhost:8000
-      VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
-      VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
-      VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
     ports:
       - "5173:5173"
     volumes:

@@ -57,9 +57,11 @@ CREATE TABLE IF NOT EXISTS comision_obliga (
 CREATE INDEX IF NOT EXISTS idx_comision_obliga_obliga_a ON comision_obliga(obliga_a_id);
 
 -- Subscripciones: registro de pagos vía Mercado Pago. clerk_user_id es FK lógica
--- (no hay tabla users propia: Clerk es la fuente de verdad de identidad).
--- mp_external_reference y mp_payment_id UNIQUE dan idempotencia ante webhook
--- duplicado (MP reintenta y a veces manda el mismo payment con distinto request).
+-- (no hay tabla users propia: Firebase Auth es la fuente de verdad). El nombre
+-- "clerk_user_id" es histórico y se mantiene por compatibilidad: hoy almacena
+-- el uid de Firebase como string opaco. mp_external_reference y mp_payment_id
+-- UNIQUE dan idempotencia ante webhook duplicado (MP reintenta y a veces manda
+-- el mismo payment con distinto request).
 CREATE TABLE IF NOT EXISTS subscriptions (
     id                     BIGSERIAL PRIMARY KEY,
     clerk_user_id          TEXT NOT NULL,
@@ -76,7 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_subs_user_until
 
 -- Planes guardados como favoritos por usuarios Pro. plan_data almacena el Plan
 -- tal cual lo devuelve /planes (snapshot en JSON: los cursos cambian entre
--- cuatrimestres, no tiene sentido FKearlo a cursos.id).
+-- cuatrimestres, no tiene sentido FKearlo a cursos.id). clerk_user_id: mismo
+-- comentario que en subscriptions — hoy guarda el uid de Firebase.
 CREATE TABLE IF NOT EXISTS favorite_plans (
     id              BIGSERIAL PRIMARY KEY,
     clerk_user_id   TEXT NOT NULL,

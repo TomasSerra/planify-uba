@@ -11,7 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import mpIcon from "@/assets/mp-icon.png";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "@/lib/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +62,7 @@ function PagoErrorDialog({
   state: PagoErrorState | null;
   onClose: () => void;
 }) {
-  const { getAccessTokenSilently } = useAuth0();
+  const { getAccessTokenSilently } = useAuth();
   const showAlert = useAlert();
   const [retrying, setRetrying] = useState(false);
 
@@ -214,7 +214,7 @@ function SaveFavoriteButton({
   isPaid: boolean;
   onLockedClick: () => void;
 }) {
-  const { getAccessTokenSilently } = useAuth0();
+  const { getAccessTokenSilently } = useAuth();
   const showAlert = useAlert();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -318,7 +318,7 @@ function decodeUrlState(raw: string): UrlState | null {
 
 export function Home() {
   const { isPaid, isLoading: subLoading } = useSubscription();
-  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
+  const { isAuthenticated, getAccessTokenSilently } = useAuth();
   const showAlert = useAlert();
   const openPaywall = usePaywall();
 
@@ -363,7 +363,7 @@ export function Home() {
   const urlLoadedRef = useRef(false);
   const calendarioRef = useRef<HTMLDivElement>(null);
   const scrollOnNextResultRef = useRef(false);
-  const { isLoading: authLoading } = useAuth0();
+  const { isLoading: authLoading } = useAuth();
   useEffect(() => {
     if (urlLoadedRef.current) return;
     if (location.pathname !== "/") return;
