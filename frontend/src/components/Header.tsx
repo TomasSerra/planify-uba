@@ -1,6 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Gem, Heart, Home as HomeIcon, LogIn, LogOut } from "lucide-react";
+import {
+  GraduationCap,
+  Gem,
+  Heart,
+  Home as HomeIcon,
+  LogIn,
+  LogOut,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,7 +20,8 @@ import { usePaywall } from "@/lib/paywall";
 
 const TABS = [
   { to: "/", label: "Inicio", icon: HomeIcon },
-  { to: "/favoritos", label: "Planes guardados", icon: Heart },
+  { to: "/favoritos", label: "Mis Planes", icon: Heart },
+  { to: "/planes-estudio", label: "Planes de estudio", icon: GraduationCap },
 ];
 
 function resolveTabTo(to: string): string {
