@@ -5,7 +5,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Clock, DoorOpen, GraduationCap, MapPin, User } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  DoorOpen,
+  GraduationCap,
+  MapPin,
+  User,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DIAS_DISPLAY = [
@@ -25,6 +32,7 @@ interface CursoConContexto extends CursoEnPlan {
   materia_nombre: string;
   materia_color: string;
   catedra_titular: string | null;
+  sinCupos: boolean;
 }
 
 interface Props {
@@ -104,6 +112,16 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
+      {curso.sinCupos && (
+        <AlertTriangle
+          aria-label="Sin cupos disponibles"
+          className={cn(
+            "absolute right-1 top-1 fill-amber-400 text-amber-900 drop-shadow",
+            compacto ? "size-3" : "size-3.5"
+          )}
+          strokeWidth={2.5}
+        />
+      )}
       {compacto ? (
         <div className="line-clamp-1 font-medium leading-tight">
           {curso.materia_nombre}
@@ -139,6 +157,12 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
       >
         <div className="space-y-1.5">
           <div className="text-sm font-semibold">{curso.materia_nombre}</div>
+          {curso.sinCupos && (
+            <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-amber-900">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              <span className="font-medium">Sin cupos disponibles</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Clock className="size-3.5 shrink-0" />
             <span>
@@ -187,6 +211,12 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
     const cs: CursoConContexto[] = [];
     plan.opciones.forEach((op, idx) => {
       const palette = PALETTE[idx % PALETTE.length];
+      // Solo la comisión tiene `vacantes` cargado: teóricos/seminarios
+      // comparten el cupo de la comisión via comision_obliga.
+      const comision = op.cursos.find((c) => c.tipo === "comision");
+      const sinCupos =
+        comision != null &&
+        (comision.vacantes == null || comision.vacantes <= 0);
       op.cursos.forEach((c) => {
         cs.push({
           ...c,
@@ -194,6 +224,7 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
           materia_nombre: op.materia_nombre,
           materia_color: palette.bg,
           catedra_titular: op.catedra_titular,
+          sinCupos,
         });
       });
     });

@@ -9,6 +9,7 @@ import {
   Hourglass,
   ChevronUp,
   ChevronDown,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { DIAS, SEDES, type FranjaExcluida } from "@/lib/types";
 
 const DIA_LABELS_SHORT: Record<string, string> = {
@@ -40,6 +42,9 @@ interface Props {
   maxBacheHoras: number | null;
   onMaxBacheHorasChange: (h: number | null) => void;
 
+  soloCupos: boolean;
+  onSoloCuposChange: (v: boolean) => void;
+
   isPaid: boolean;
   isLoading?: boolean;
   onUpgrade?: () => void;
@@ -54,6 +59,8 @@ export function RestriccionesPanel({
   onSedesChange,
   maxBacheHoras,
   onMaxBacheHorasChange,
+  soloCupos,
+  onSoloCuposChange,
   isPaid,
   isLoading,
   onUpgrade,
@@ -390,6 +397,26 @@ export function RestriccionesPanel({
           </div>
           <span className="text-sm text-muted-foreground">horas</span>
         </div>
+      </section>
+
+      <Separator />
+
+      {/* Solo materias con cupos */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-muted-foreground" />
+          <Label className="text-sm">Solo materias con cupos</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Descarta opciones cuya comisión no tenga cupos disponibles.
+        </p>
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2.5 transition-colors hover:bg-accent">
+          <Switch
+            checked={soloCupos}
+            onCheckedChange={onSoloCuposChange}
+          />
+          <span className="flex-1 text-sm">Mostrar solo con cupos</span>
+        </label>
       </section>
       </div>
       </div>

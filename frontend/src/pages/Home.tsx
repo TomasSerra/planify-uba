@@ -300,6 +300,7 @@ interface UrlState {
   f: FranjaExcluida[];
   s: string[];
   b?: number | null;
+  sc?: boolean;
 }
 
 function encodeUrlState(s: UrlState): string {
@@ -350,6 +351,7 @@ export function Home() {
   const [franjas, setFranjas] = useState<FranjaExcluida[]>([]);
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
   const [maxBacheHoras, setMaxBacheHoras] = useState<number | null>(null);
+  const [soloCupos, setSoloCupos] = useState<boolean>(false);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [calendarioCompacto, setCalendarioCompacto] = useState<boolean>(
     () => localStorage.getItem("calendarioCompacto") === "1"
@@ -388,12 +390,14 @@ export function Home() {
           nombre: byCodigo.get(x.c) ?? `Materia ${x.c}`,
         }));
         const bache = decoded.b ?? null;
+        const sc = decoded.sc ?? false;
         setMaterias(seleccion);
         setDiasPermitidos(decoded.d);
         setFranjas(decoded.f);
         setSedesPermitidas(decoded.s);
         setMaxBacheHoras(bache);
-        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s, bache);
+        setSoloCupos(sc);
+        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s, bache, sc);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -438,8 +442,9 @@ export function Home() {
         franjas,
         sedesPermitidas: [...sedesPermitidas].sort(),
         maxBacheHoras,
+        soloCupos,
       }),
-    [materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras]
+    [materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras, soloCupos]
   );
 
   const sinCambios =
@@ -450,7 +455,8 @@ export function Home() {
     dias: string[],
     franjasExcl: FranjaExcluida[],
     sedes: string[],
-    bache: number | null
+    bache: number | null,
+    solo: boolean
   ) {
     if (seleccion.length === 0) return;
     setLoading(true);
@@ -475,6 +481,7 @@ export function Home() {
           sedes_permitidas: sedes,
           max_bache_horas: bache,
           max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
+          solo_con_cupos: solo,
         },
         token
       );
@@ -491,6 +498,7 @@ export function Home() {
         franjas: franjasExcl,
         sedesPermitidas: [...sedes].sort(),
         maxBacheHoras: bache,
+        soloCupos: solo,
       });
       setLastGeneratedSignature(sig);
       const filtersSnapshot: FavoriteFilters = {
@@ -498,6 +506,7 @@ export function Home() {
         franjas_excluidas: franjasExcl,
         sedes_permitidas: sedes,
         max_bache_horas: bache,
+        solo_con_cupos: solo,
         materias: seleccion.map((m) => ({
           codigo: m.codigo,
           nombre: m.nombre,
@@ -522,6 +531,7 @@ export function Home() {
             sedes_permitidas: sedes,
             max_bache_horas: bache,
             max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
+            solo_con_cupos: solo,
           },
           filters: filtersSnapshot,
           response: data,
@@ -538,6 +548,7 @@ export function Home() {
         f: franjasExcl,
         s: sedes,
         b: bache,
+        sc: solo || undefined,
       });
       const search = `?q=${q}`;
       sessionStorage.setItem("horarios:last-home-search", search);
@@ -563,7 +574,14 @@ export function Home() {
   }
 
   function generar() {
-    return runGenerate(materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras);
+    return runGenerate(
+      materias,
+      diasPermitidos,
+      franjas,
+      sedesPermitidas,
+      maxBacheHoras,
+      soloCupos
+    );
   }
 
   function restoreFromHistory(entry: PlanHistoryEntry) {
@@ -578,11 +596,13 @@ export function Home() {
       (d) => !entry.filters.dias_excluidos.includes(d)
     );
     const bache = entry.filters.max_bache_horas ?? null;
+    const solo = entry.filters.solo_con_cupos ?? false;
     setMaterias(seleccion);
     setDiasPermitidos(dias);
     setFranjas(entry.filters.franjas_excluidas);
     setSedesPermitidas(entry.filters.sedes_permitidas);
     setMaxBacheHoras(bache);
+    setSoloCupos(solo);
     scrollOnNextResultRef.current = true;
     setResultado(entry.response);
     setPlanIdx(0);
@@ -599,6 +619,7 @@ export function Home() {
         franjas: entry.filters.franjas_excluidas,
         sedesPermitidas: [...entry.filters.sedes_permitidas].sort(),
         maxBacheHoras: bache,
+        soloCupos: solo,
       })
     );
     setLastGeneratedFilters(entry.filters);
@@ -613,6 +634,7 @@ export function Home() {
       f: entry.filters.franjas_excluidas,
       s: entry.filters.sedes_permitidas,
       b: bache,
+      sc: solo || undefined,
     });
     const search = `?q=${q}`;
     sessionStorage.setItem("horarios:last-home-search", search);
@@ -670,7 +692,8 @@ export function Home() {
                 {(diasPermitidos.length !== ALL_DIAS.length ||
                   franjas.length > 0 ||
                   sedesPermitidas.length > 0 ||
-                  maxBacheHoras !== null) && (
+                  maxBacheHoras !== null ||
+                  soloCupos) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -678,6 +701,7 @@ export function Home() {
                       setFranjas([]);
                       setSedesPermitidas([]);
                       setMaxBacheHoras(null);
+                      setSoloCupos(false);
                     }}
                     className="text-sm font-medium leading-none text-primary hover:underline"
                   >
@@ -701,6 +725,8 @@ export function Home() {
                 onSedesChange={setSedesPermitidas}
                 maxBacheHoras={maxBacheHoras}
                 onMaxBacheHorasChange={setMaxBacheHoras}
+                soloCupos={soloCupos}
+                onSoloCuposChange={setSoloCupos}
                 isPaid={isPaid}
                 isLoading={subLoading}
                 onUpgrade={() => openPaywall("filtros")}

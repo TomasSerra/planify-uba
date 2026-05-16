@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/useAuth";
+import { useSubscription } from "@/lib/useSubscription";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  CheckCircle2,
   Filter,
   GraduationCap,
   CalendarDays,
@@ -80,8 +83,11 @@ function PaywallDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { getAccessTokenSilently, isAuthenticated, openLogin } = useAuth();
+  const { isPaid, isLoading: subLoading } = useSubscription();
+  const queryClient = useQueryClient();
   const showAlert = useAlert();
   const [initPoint, setInitPoint] = useState<string | null>(null);
+  const [externalReference, setExternalReference] = useState<string | null>(null);
   const [loadingFor, setLoadingFor] = useState<"redirect" | "qr" | null>(null);
   const [showQR, setShowQR] = useState(false);
   const redirectStartedAtRef = useRef<number | null>(null);
@@ -90,6 +96,7 @@ function PaywallDialog({
   useEffect(() => {
     if (!open) {
       setInitPoint(null);
+      setExternalReference(null);
       setShowQR(false);
       setLoadingFor(null);
       redirectStartedAtRef.current = null;
@@ -99,6 +106,25 @@ function PaywallDialog({
       }
     }
   }, [open]);
+
+  // Polling de status mientras el QR está visible: cuando MP acredita el pago
+  // (escaneado desde el celu), invalidamos useSubscription y cerramos.
+  const { data: qrPagoStatus } = useQuery({
+    queryKey: ["pago-status", externalReference],
+    queryFn: () => {
+      if (!externalReference) throw new Error("Falta external_reference");
+      return api.getPagoStatus(externalReference);
+    },
+    enabled: open && showQR && !!externalReference,
+    refetchInterval: (q) => (q.state.data?.status === "approved" ? false : 2000),
+  });
+
+  useEffect(() => {
+    if (qrPagoStatus?.status !== "approved") return;
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    const t = setTimeout(() => onOpenChange(false), 1800);
+    return () => clearTimeout(t);
+  }, [qrPagoStatus?.status, queryClient, onOpenChange]);
 
   // Si el usuario va a MP (o abre el QR en otra tab) y vuelve sin pagar,
   // el botón puede quedar en loading. visibilitychange + timeout de seguridad
@@ -140,12 +166,27 @@ function PaywallDialog({
       openLogin("signin");
       return null;
     }
-    const { init_point } = await api.postCheckout(token);
+    const { init_point, external_reference } = await api.postCheckout(token);
     setInitPoint(init_point);
+    setExternalReference(external_reference);
     return init_point;
   }
 
+  function guardAlreadyPaid(): boolean {
+    if (!isPaid) return false;
+    showAlert({
+      variant: "info",
+      title: "Ya sos Pro",
+      message:
+        "Tu suscripción está activa — no hace falta pagar de nuevo. Recargá la página si no ves los beneficios desbloqueados.",
+    });
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    onOpenChange(false);
+    return true;
+  }
+
   async function pagar() {
+    if (guardAlreadyPaid()) return;
     setLoadingFor("redirect");
     try {
       const ip = await fetchInitPoint();
@@ -166,6 +207,7 @@ function PaywallDialog({
       setShowQR(false);
       return;
     }
+    if (guardAlreadyPaid()) return;
     setLoadingFor("qr");
     try {
       const ip = await fetchInitPoint();
@@ -209,7 +251,28 @@ function PaywallDialog({
           ))}
         </ul>
 
-        {isAuthenticated ? (
+        {!isAuthenticated ? (
+          <Button
+            size="lg"
+            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+            onClick={() => openLogin("signin")}
+          >
+            <LogIn className="size-4" />
+            Iniciar sesión
+          </Button>
+        ) : subLoading ? (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : isPaid ? (
+          <div className="flex flex-col items-center gap-2 py-2 text-center">
+            <CheckCircle2 className="size-10 text-emerald-600" strokeWidth={1.5} />
+            <p className="text-sm font-medium">Ya tenés Pro activo</p>
+            <p className="text-xs text-muted-foreground">
+              No hace falta pagar de nuevo. Disfrutá los beneficios desbloqueados.
+            </p>
+          </div>
+        ) : (
           <>
             <Button
               size="lg"
@@ -250,25 +313,31 @@ function PaywallDialog({
               </Button>
               {showQR && initPoint && (
                 <div className="flex flex-col items-center gap-2 pt-3">
-                  <div className="rounded-lg border bg-white p-3">
-                    <QRCodeSVG value={initPoint} size={160} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Escaneá con la cámara del celular
-                  </p>
+                  {qrPagoStatus?.status === "approved" ? (
+                    <>
+                      <CheckCircle2
+                        className="size-10 text-emerald-600"
+                        strokeWidth={1.5}
+                      />
+                      <p className="text-sm font-medium">
+                        ¡Pago acreditado! Ya sos Pro.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-lg border bg-white p-3">
+                        <QRCodeSVG value={initPoint} size={160} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Escaneá con la cámara del celular. Cuando MP confirme,
+                        esta ventana se actualiza sola.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           </>
-        ) : (
-          <Button
-            size="lg"
-            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            onClick={() => openLogin("signin")}
-          >
-            <LogIn className="size-4" />
-            Iniciar sesión
-          </Button>
         )}
       </DialogContent>
     </Dialog>

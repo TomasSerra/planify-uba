@@ -20,6 +20,7 @@ export interface CursoEnPlan extends CursoSummary {
   catedra_id: number;
   profesor: string | null;
   sede: string | null;
+  vacantes?: number | null;
 }
 
 export interface OpcionMateria {
@@ -58,6 +59,7 @@ export interface PlanRequest {
   sedes_permitidas?: string[];
   max_bache_horas?: number | null;
   max_planes?: number;
+  solo_con_cupos?: boolean;
 }
 
 export interface CatedraOpcion {
@@ -85,6 +87,7 @@ export interface FavoriteFilters {
   franjas_excluidas: FranjaExcluida[];
   sedes_permitidas: string[];
   max_bache_horas?: number | null;
+  solo_con_cupos?: boolean;
   materias: Array<{
     codigo: number;
     nombre: string;

@@ -71,12 +71,21 @@ class PlanRequest(BaseModel):
         ),
     )
     max_planes: int = Field(20, ge=1, le=100)
+    solo_con_cupos: bool = Field(
+        default=False,
+        description=(
+            "Si True, descarta opciones cuya comisión no tenga cupos disponibles "
+            "(vacantes NULL o <= 0). Teóricos/seminarios no se miran: comparten "
+            "el cupo de la comisión vía comision_obliga."
+        ),
+    )
 
 
 class CursoEnPlan(CursoSummary):
     catedra_id: int
     profesor: str | None = None
     sede: str | None = None
+    vacantes: int | None = None
 
 
 class OpcionMateria(BaseModel):
@@ -239,7 +248,7 @@ def _fetch_opciones_por_materia(conn, materia_codigos: list[int]) -> dict[int, l
                ca.titular AS catedra_titular,
                com.id AS comision_id, com.codigo AS comision_codigo,
                com.dia, com.hora_inicio, com.hora_fin,
-               com.profesor, com.aula, com.sede
+               com.profesor, com.aula, com.sede, com.vacantes
           FROM materias m
           JOIN catedras ca ON ca.materia_codigo = m.codigo
           JOIN cursos com ON com.catedra_id = ca.id AND com.tipo = 'comision'
@@ -258,7 +267,7 @@ def _fetch_opciones_por_materia(conn, materia_codigos: list[int]) -> dict[int, l
         SELECT co.comision_id,
                t.id, t.tipo::text AS tipo, t.codigo, t.dia,
                t.hora_inicio, t.hora_fin, t.aula, t.profesor, t.sede,
-               t.catedra_id
+               t.catedra_id, t.vacantes
           FROM comision_obliga co
           JOIN cursos t ON t.id = co.obliga_a_id
          WHERE co.comision_id = ANY(%s)
@@ -285,6 +294,7 @@ def _fetch_opciones_por_materia(conn, materia_codigos: list[int]) -> dict[int, l
             profesor=r["profesor"],
             sede=r["sede"],
             catedra_id=r["catedra_id"],
+            vacantes=r["vacantes"],
         )
         cursos = [comision, *obliga_map.get(r["comision_id"], [])]
         opciones_por_materia[r["materia_codigo"]].append(
@@ -350,6 +360,15 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
                 for c in op.cursos
             )
         ]
+
+        # Solo la comisión (siempre cursos[0]) tiene `vacantes`: teóricos y
+        # seminarios comparten el cupo vía comision_obliga y vienen con NULL.
+        if req.solo_con_cupos:
+            validas = [
+                op for op in validas
+                if op.cursos[0].vacantes is not None and op.cursos[0].vacantes > 0
+            ]
+
         if not validas:
             materias_sin_opciones.append(cod)
         else:

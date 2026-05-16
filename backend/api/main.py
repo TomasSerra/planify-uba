@@ -296,6 +296,8 @@ def _request_uses_filters(req: PlanRequest) -> bool:
         return True
     if req.max_bache_horas is not None:
         return True
+    if req.solo_con_cupos:
+        return True
     for m in req.materias:
         if m.catedra_id is not None or m.profesores is not None or m.sede is not None:
             return True

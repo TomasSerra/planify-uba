@@ -222,10 +222,18 @@ def post_webhook(
     x_signature: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    # Modern webhook payload: {"type": "payment", "data": {"id": "..."}, ...}
-    # También soporta query params legacy (?topic=payment&id=...).
-    type_ = body.get("type") or body.get("topic") or request.query_params.get("topic")
-    data_id = (body.get("data") or {}).get("id") or request.query_params.get("id") or body.get("id")
+    # MP manda dos sistemas en paralelo: el webhook moderno (query ?data.id=…&type=…,
+    # firmado con MP_WEBHOOK_SECRET) y el IPN legacy (?id=…&topic=…, firmado con otra
+    # clave heredada que no controlamos). El moderno ya cubre todos los eventos, así
+    # que descartamos el IPN antes de tocar la firma — si no, tira 401 ruidoso.
+    if "topic" in request.query_params:
+        return {"ok": True}
+    type_ = body.get("type") or request.query_params.get("type")
+    data_id = (
+        (body.get("data") or {}).get("id")
+        or request.query_params.get("data.id")
+        or body.get("id")
+    )
     if type_ != "payment" or not data_id:
         return {"ok": True}
 
