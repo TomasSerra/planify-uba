@@ -265,7 +265,7 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
     : "grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]";
 
   return (
-    <div className="overflow-auto max-h-[90dvh]">
+    <div className="overflow-x-auto">
       <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
         <div className={cn("grid border-b border-border", gridCols)}>
           <div className="p-3 text-xs font-medium text-muted-foreground" />

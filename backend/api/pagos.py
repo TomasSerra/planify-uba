@@ -10,6 +10,7 @@ from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .auth import AuthUser, current_user
@@ -81,7 +82,18 @@ def post_checkout(user: AuthUser = Depends(current_user)) -> CheckoutResponse:
         log.error("MP preference creation failed: %s %s", res.status_code, res.text)
         raise HTTPException(status_code=502, detail="No se pudo crear la preferencia de pago")
     data = res.json()
-    return CheckoutResponse(init_point=data["init_point"], external_reference=external_reference)
+    init_point = data["init_point"]
+    # Persistimos el init_point para que el QR pueda apuntar a /pago-qr/{ref}
+    # en nuestro dominio y redirigir desde ahí. Si codificamos la init_point
+    # directo en el QR, escanear con la app de MP procesa el pago in-app y
+    # nunca dispara el webhook.
+    with pool.connection() as conn:
+        conn.execute(
+            "INSERT INTO pending_checkouts (external_reference, init_point) VALUES (%s, %s)",
+            (external_reference, init_point),
+        )
+        conn.commit()
+    return CheckoutResponse(init_point=init_point, external_reference=external_reference)
 
 
 # MP reintenta webhooks por hasta ~24 h. La protección anti-replay real es la
@@ -212,6 +224,10 @@ def _record_payment(payment: dict) -> None:
                     amount,
                 ),
             )
+        conn.execute(
+            "DELETE FROM pending_checkouts WHERE external_reference = %s",
+            (external_reference,),
+        )
         conn.commit()
 
 
@@ -265,3 +281,19 @@ def get_pago_status(external_reference: str) -> PagoStatus:
             (external_reference,),
         ).fetchone()
     return PagoStatus(status="approved" if row else "pending")
+
+
+@router.get("/qr/{external_reference}")
+def get_pago_qr_redirect(external_reference: str) -> RedirectResponse:
+    # Target del QR de pago mobile: 302 directo a la init_point de MP. Server-
+    # side y no client-side — un redirect programático desde React rompe el
+    # render de la checkout de MP (CSP nonce mismatch). Con un 302 nativo MP
+    # ve la nav como un click normal.
+    with pool.connection() as conn:
+        row = conn.execute(
+            "SELECT init_point FROM pending_checkouts WHERE external_reference = %s",
+            (external_reference,),
+        ).fetchone()
+    if not row:
+        return RedirectResponse(url=f"{APP_URL}/pago-error", status_code=302)
+    return RedirectResponse(url=row["init_point"], status_code=302)

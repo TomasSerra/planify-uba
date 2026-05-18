@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import mpIcon from "@/assets/mp-icon.png";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { useAlert } from "@/lib/alert";
 import { PaywallContext, type PaywallReason } from "@/lib/paywall";
 
@@ -311,7 +311,7 @@ function PaywallDialog({
                 )}
                 Pagar desde tu celular
               </Button>
-              {showQR && initPoint && (
+              {showQR && externalReference && (
                 <div className="flex flex-col items-center gap-2 pt-3">
                   {qrPagoStatus?.status === "approved" ? (
                     <>
@@ -326,11 +326,15 @@ function PaywallDialog({
                   ) : (
                     <>
                       <div className="rounded-lg border bg-white p-3">
-                        <QRCodeSVG value={initPoint} size={160} />
+                        <QRCodeSVG
+                          value={`${API_BASE}/pagos/qr/${externalReference}`}
+                          size={160}
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Escaneá con la cámara del celular. Cuando MP confirme,
-                        esta ventana se actualiza sola.
+                      <p className="px-2 text-center text-xs text-muted-foreground">
+                        Escaneá con la <strong>cámara del celular</strong>, no
+                        con la app de Mercado Pago. Cuando MP confirme, esta
+                        ventana se actualiza sola.
                       </p>
                     </>
                   )}

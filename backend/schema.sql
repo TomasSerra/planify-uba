@@ -93,3 +93,13 @@ CREATE TABLE IF NOT EXISTS favorite_plans (
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user
     ON favorite_plans(clerk_user_id, created_at DESC);
+
+-- Mapeo external_reference -> init_point para el QR de pago mobile. El QR
+-- codifica una URL nuestra (/pago-qr/:ref) en vez de la init_point directa de
+-- MP — así la app de Mercado Pago no procesa el QR in-app (caso en que el
+-- webhook nunca se dispara) y queda obligado el flujo por navegador.
+CREATE TABLE IF NOT EXISTS pending_checkouts (
+    external_reference TEXT PRIMARY KEY,
+    init_point         TEXT NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
