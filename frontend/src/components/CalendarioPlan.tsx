@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
 
 const DIAS_DISPLAY = [
   { key: "lunes", short: "Lun" },
@@ -83,6 +84,7 @@ interface CursoBloqueProps {
 function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
   const [open, setOpen] = useState(false);
   const timer = useRef<number | null>(null);
+  const isTouch = useIsTouchDevice();
 
   const cancel = () => {
     if (timer.current !== null) {
@@ -106,11 +108,13 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
         compacto
           ? "flex items-center px-1.5 py-0 text-[10px]"
           : "px-2 py-1.5 text-[11px]",
-        curso.materia_color
+        curso.materia_color,
+        isTouch && "cursor-pointer"
       )}
       style={{ top, height }}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
+      onMouseEnter={isTouch ? undefined : onEnter}
+      onMouseLeave={isTouch ? undefined : onLeave}
+      onClick={isTouch ? () => setOpen((v) => !v) : undefined}
     >
       {curso.sinCupos && (
         <AlertTriangle
@@ -144,15 +148,15 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
   );
 
   return (
-    <Popover open={open}>
+    <Popover open={open} onOpenChange={isTouch ? setOpen : undefined}>
       <PopoverTrigger asChild>{bloque}</PopoverTrigger>
       <PopoverContent
         className="w-auto min-w-[200px] max-w-[280px] p-3 text-xs"
         side="right"
         align="start"
         sideOffset={6}
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
+        onMouseEnter={isTouch ? undefined : onEnter}
+        onMouseLeave={isTouch ? undefined : onLeave}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="space-y-1.5">

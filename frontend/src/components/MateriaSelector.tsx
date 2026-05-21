@@ -54,12 +54,25 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
 
   // Scroll al tope cada vez que cambia el query. En un useEffect (no en
   // onValueChange) para correr DESPUÉS de que cmdk filtró y reordenó.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = 0;
   }, [query]);
+
+  // El popover se renderiza en un portal, por eso no hereda el ancho del Card.
+  // Lo medimos para que el contenedor de búsqueda matchee el de seleccionadas.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPopoverWidth(el.offsetWidth));
+    ro.observe(el);
+    setPopoverWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +123,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-3 lg:h-full">
+    <div ref={wrapperRef} className="flex flex-col gap-3 lg:h-full">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BookOpen className="size-4" />
@@ -128,7 +141,15 @@ export function MateriaSelector({ selected, onChange }: Props) {
               Agregar materia
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[min(520px,calc(100vw-2rem))] p-0" align="end">
+          <PopoverContent
+            className="p-0"
+            align="end"
+            style={
+              popoverWidth
+                ? { width: popoverWidth }
+                : { width: "min(520px, calc(100vw - 2rem))" }
+            }
+          >
             <Command shouldFilter filter={filtrarMateria}>
               <CommandInput
                 placeholder="Buscar materia..."

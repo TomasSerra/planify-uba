@@ -124,8 +124,6 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
                 catedras={opciones.catedras}
                 selected={seleccion.catedra_id}
                 onSelect={(id) => onChange({ ...seleccion, catedra_id: id })}
-                disabled={!isPaid}
-                onLockedClick={() => openPaywall("catedra")}
               />
             )}
           </div>
@@ -171,35 +169,16 @@ function CatedraDropdown({
   catedras,
   selected,
   onSelect,
-  disabled,
-  onLockedClick,
 }: {
   catedras: CatedraOpcion[];
   selected: number | null;
   onSelect: (id: number | null) => void;
-  disabled?: boolean;
-  onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const sel = catedras.find((c) => c.id === selected);
   const label = sel
     ? `Cát ${sel.numero ?? sel.id}${sel.titular ? ` · ${sel.titular}` : ""}`
     : `Todas (${catedras.length})`;
-
-  if (disabled) {
-    return (
-      <button
-        type="button"
-        onClick={onLockedClick}
-        title="Hacete Pro para elegir cátedra"
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
-      >
-        <GraduationCap className="size-3.5 shrink-0" />
-        <span className="flex-1 truncate">{label}</span>
-        <Gem className="size-3.5 shrink-0 text-[#EC990B]" />
-      </button>
-    );
-  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -14,9 +15,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
+
+const MESES_CORTOS = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+] as const;
 
 const TABS = [
   { to: "/", label: "Inicio", icon: HomeIcon },
@@ -119,6 +142,8 @@ function PayChip() {
 function UserMenu() {
   const { user, isAuthenticated, isLoading, openLogin, logout } = useAuth();
   const { isPaid, validUntil } = useSubscription();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const email = user?.email ?? "";
   const initial = email.slice(0, 1).toUpperCase() || "?";
 
@@ -140,16 +165,14 @@ function UserMenu() {
     );
   }
 
-  const validUntilFormatted = validUntil?.toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const validUntilFormatted = validUntil
+    ? `${validUntil.getDate()} ${MESES_CORTOS[validUntil.getMonth()]} ${validUntil.getFullYear()}`
+    : undefined;
 
   return (
     <div className="flex items-center gap-3">
       <PayChip />
-      <Popover>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -191,13 +214,46 @@ function UserMenu() {
           </div>
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={() => {
+              setMenuOpen(false);
+              setConfirmingLogout(true);
+            }}
             className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
           >
             <LogOut className="size-4" /> Cerrar sesión
           </button>
         </PopoverContent>
       </Popover>
+
+      <Dialog open={confirmingLogout} onOpenChange={setConfirmingLogout}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Cerrar sesión?</DialogTitle>
+            <DialogDescription>
+              Vas a tener que volver a iniciar sesión para acceder a tus planes
+              guardados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingLogout(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmingLogout(false);
+                logout();
+              }}
+            >
+              <LogOut className="size-4" />
+              Cerrar sesión
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

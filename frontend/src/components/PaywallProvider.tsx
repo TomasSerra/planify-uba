@@ -66,6 +66,10 @@ const PAYWALL_COPY: Record<PaywallReason, { title: string; description: string }
     description:
       "Guardar combinaciones en favoritos es una función Pro. Suscribite y desbloqueá ésta y todas las funciones avanzadas.",
   },
+  "planes-limit": {
+    title: "Más planes con Pro",
+    description: `En gratis generás hasta ${FREE_MAX_PLANES} planes. Hacete Pro y generá hasta ${PRO_MAX_PLANES}.`,
+  },
   general: {
     title: "Hacete Pro",
     description:

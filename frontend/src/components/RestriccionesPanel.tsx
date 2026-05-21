@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Plus,
   Trash2,
@@ -19,6 +20,33 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { DIAS, SEDES, type FranjaExcluida } from "@/lib/types";
+
+function LockedSection({
+  locked,
+  onUpgrade,
+  children,
+}: {
+  locked: boolean;
+  onUpgrade?: () => void;
+  children: ReactNode;
+}) {
+  if (!locked) return <>{children}</>;
+  return (
+    <div className="relative">
+      <div className="pointer-events-none select-none opacity-50">
+        {children}
+      </div>
+      {onUpgrade && (
+        <button
+          type="button"
+          onClick={onUpgrade}
+          aria-label="Hacete Pro para usar este filtro"
+          className="absolute inset-0 cursor-pointer rounded-lg"
+        />
+      )}
+    </div>
+  );
+}
 
 const DIA_LABELS_SHORT: Record<string, string> = {
   lunes: "Lun",
@@ -145,10 +173,10 @@ export function RestriccionesPanel({
             <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">
-                Filtros disponibles solo para Pro
+                Algunos filtros requieren Pro
               </p>
               <p className="mt-0.5 text-muted-foreground">
-                Hacete Pro para filtrar por días, franjas horarias y sedes.
+                Hacete Pro para usar franjas horarias, sedes y bache máximo.
               </p>
             </div>
           </div>
@@ -165,13 +193,7 @@ export function RestriccionesPanel({
       )}
 
       <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
-      <div
-        className={
-          "space-y-6 " +
-          (!isPaid ? "pointer-events-none select-none opacity-50" : "")
-        }
-        aria-disabled={!isPaid}
-      >
+      <div className="space-y-6">
       {/* Días permitidos */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
@@ -209,6 +231,7 @@ export function RestriccionesPanel({
       <Separator />
 
       {/* Franjas horarias bloqueadas (multi-día) */}
+      <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -285,10 +308,12 @@ export function RestriccionesPanel({
           </div>
         )}
       </section>
+      </LockedSection>
 
       <Separator />
 
       {/* Sedes */}
+      <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -324,10 +349,12 @@ export function RestriccionesPanel({
           ))}
         </div>
       </section>
+      </LockedSection>
 
       <Separator />
 
       {/* Bache máximo */}
+      <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -398,6 +425,7 @@ export function RestriccionesPanel({
           <span className="text-sm text-muted-foreground">horas</span>
         </div>
       </section>
+      </LockedSection>
 
       <Separator />
 

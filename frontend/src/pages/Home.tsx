@@ -805,6 +805,15 @@ export function Home() {
                 <PlanNavigator
                   index={planIdx}
                   total={resultado.planes.length}
+                  displayTotal={
+                    !isPaid && resultado.planes.length >= FREE_MAX_PLANES
+                      ? PRO_MAX_PLANES
+                      : undefined
+                  }
+                  freemiumLocked={
+                    !isPaid && resultado.planes.length >= FREE_MAX_PLANES
+                  }
+                  onUpgrade={() => openPaywall("planes-limit")}
                   onChange={setPlanIdx}
                 />
               </div>
