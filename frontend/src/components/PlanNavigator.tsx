@@ -37,7 +37,7 @@ export function PlanNavigator({
       </div>
       <Button
         variant="outline"
-        size="icon"
+        size={lockedAtEnd ? "sm" : "icon"}
         onClick={
           lockedAtEnd
             ? onUpgrade
@@ -46,16 +46,13 @@ export function PlanNavigator({
         disabled={isLast && !lockedAtEnd}
         className={
           lockedAtEnd
-            ? "border-[#EC990B] text-[#EC990B] hover:bg-[#EC990B]/10 hover:text-[#EC990B]"
+            ? "gap-1 border-[#EC990B] px-2 text-[#EC990B] hover:bg-[#EC990B]/10 hover:text-[#EC990B]"
             : ""
         }
         title={lockedAtEnd ? "Hacete Pro para ver más planes" : undefined}
       >
-        {lockedAtEnd ? (
-          <Gem className="size-4" />
-        ) : (
-          <ChevronRight className="size-4" />
-        )}
+        <ChevronRight className="size-4" />
+        {lockedAtEnd && <Gem className="size-3.5" />}
       </Button>
     </div>
   );

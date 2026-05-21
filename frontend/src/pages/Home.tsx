@@ -450,6 +450,24 @@ export function Home() {
   const sinCambios =
     lastGeneratedSignature !== null && currentSignature === lastGeneratedSignature;
 
+  // Si el usuario se vuelve Pro mientras hay un resultado topeado al límite
+  // Free en pantalla, regeneramos automáticamente con el cap nuevo (100).
+  // Cubre: vuelta del checkout, polling QR aprobado, y restore del historial
+  // siendo Pro con un response viejo capeado a Free.
+  const autoRegenFiredRef = useRef(false);
+  useEffect(() => {
+    autoRegenFiredRef.current = false;
+  }, [currentSignature]);
+  useEffect(() => {
+    if (!isPaid || subLoading) return;
+    if (!resultado || resultado.planes.length !== FREE_MAX_PLANES) return;
+    if (!lastGeneratedFilters) return;
+    if (autoRegenFiredRef.current) return;
+    autoRegenFiredRef.current = true;
+    void generar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaid, subLoading, resultado, lastGeneratedFilters]);
+
   async function runGenerate(
     seleccion: SeleccionConNombre[],
     dias: string[],

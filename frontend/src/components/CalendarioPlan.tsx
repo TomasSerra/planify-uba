@@ -6,6 +6,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import {
   AlertTriangle,
   Clock,
   DoorOpen,
@@ -81,6 +88,64 @@ interface CursoBloqueProps {
   height: number;
 }
 
+function CursoDetalle({
+  curso,
+  size = "popover",
+}: {
+  curso: CursoConContexto;
+  size?: "popover" | "drawer";
+}) {
+  const iconSize = size === "drawer" ? "size-4" : "size-3.5";
+  const textCls =
+    size === "drawer"
+      ? "flex items-center gap-2 text-sm text-muted-foreground"
+      : "flex items-center gap-1.5 text-muted-foreground";
+  return (
+    <div className={size === "drawer" ? "space-y-2.5" : "space-y-1.5"}>
+      {size === "popover" && (
+        <div className="text-sm font-semibold">{curso.materia_nombre}</div>
+      )}
+      {curso.sinCupos && (
+        <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-amber-900">
+          <AlertTriangle className={cn("shrink-0", iconSize)} />
+          <span className="font-medium">Sin cupos disponibles</span>
+        </div>
+      )}
+      <div className={textCls}>
+        <Clock className={cn("shrink-0", iconSize)} />
+        <span>
+          {formatTipo(curso.tipo, curso.codigo)} ·{" "}
+          {formatHM(curso.hora_inicio)}–{formatHM(curso.hora_fin)}
+        </span>
+      </div>
+      {curso.aula && (
+        <div className={textCls}>
+          <DoorOpen className={cn("shrink-0", iconSize)} />
+          <span>Aula {curso.aula}</span>
+        </div>
+      )}
+      {curso.profesor && (
+        <div className={textCls}>
+          <User className={cn("shrink-0", iconSize)} />
+          <span>{curso.profesor}</span>
+        </div>
+      )}
+      {curso.sede && (
+        <div className={textCls}>
+          <MapPin className={cn("shrink-0", iconSize)} />
+          <span>{curso.sede}</span>
+        </div>
+      )}
+      {curso.catedra_titular && (
+        <div className={textCls}>
+          <GraduationCap className={cn("shrink-0", iconSize)} />
+          <span>Cátedra: {curso.catedra_titular}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
   const [open, setOpen] = useState(false);
   const timer = useRef<number | null>(null);
@@ -104,17 +169,15 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
   const bloque = (
     <div
       className={cn(
-        "absolute left-1 right-1 overflow-hidden rounded-md shadow-sm",
+        "absolute left-1 right-1 cursor-pointer overflow-hidden rounded-md shadow-sm",
         compacto
           ? "flex items-center px-1.5 py-0 text-[10px]"
           : "px-2 py-1.5 text-[11px]",
-        curso.materia_color,
-        isTouch && "cursor-pointer"
+        curso.materia_color
       )}
       style={{ top, height }}
       onMouseEnter={isTouch ? undefined : onEnter}
       onMouseLeave={isTouch ? undefined : onLeave}
-      onClick={isTouch ? () => setOpen((v) => !v) : undefined}
     >
       {curso.sinCupos && (
         <AlertTriangle
@@ -147,58 +210,35 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
     </div>
   );
 
+  if (isTouch) {
+    return (
+      <Drawer>
+        <DrawerTrigger asChild>{bloque}</DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{curso.materia_nombre}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6">
+            <CursoDetalle curso={curso} size="drawer" />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
-    <Popover open={open} onOpenChange={isTouch ? setOpen : undefined}>
+    <Popover open={open} onOpenChange={undefined}>
       <PopoverTrigger asChild>{bloque}</PopoverTrigger>
       <PopoverContent
         className="w-auto min-w-[200px] max-w-[280px] p-3 text-xs"
         side="right"
         align="start"
         sideOffset={6}
-        onMouseEnter={isTouch ? undefined : onEnter}
-        onMouseLeave={isTouch ? undefined : onLeave}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="space-y-1.5">
-          <div className="text-sm font-semibold">{curso.materia_nombre}</div>
-          {curso.sinCupos && (
-            <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-amber-900">
-              <AlertTriangle className="size-3.5 shrink-0" />
-              <span className="font-medium">Sin cupos disponibles</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Clock className="size-3.5 shrink-0" />
-            <span>
-              {formatTipo(curso.tipo, curso.codigo)} ·{" "}
-              {formatHM(curso.hora_inicio)}–{formatHM(curso.hora_fin)}
-            </span>
-          </div>
-          {curso.aula && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <DoorOpen className="size-3.5 shrink-0" />
-              <span>Aula {curso.aula}</span>
-            </div>
-          )}
-          {curso.profesor && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <User className="size-3.5 shrink-0" />
-              <span>{curso.profesor}</span>
-            </div>
-          )}
-          {curso.sede && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <MapPin className="size-3.5 shrink-0" />
-              <span>{curso.sede}</span>
-            </div>
-          )}
-          {curso.catedra_titular && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <GraduationCap className="size-3.5 shrink-0" />
-              <span>Cátedra: {curso.catedra_titular}</span>
-            </div>
-          )}
-        </div>
+        <CursoDetalle curso={curso} size="popover" />
       </PopoverContent>
     </Popover>
   );
@@ -269,8 +309,9 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
     : "grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]";
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
+    <div>
+      <div className="overflow-x-auto overflow-y-clip">
+        <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
         <div className={cn("grid border-b border-border", gridCols)}>
           <div className="p-3 text-xs font-medium text-muted-foreground" />
           {DIAS_DISPLAY.map((d) => (
@@ -356,6 +397,7 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
