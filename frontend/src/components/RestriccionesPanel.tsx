@@ -167,31 +167,6 @@ export function RestriccionesPanel({
 
   return (
     <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
-      {!isPaid && (
-        <div className="flex flex-col gap-3 rounded-lg border border-[#EC990B]/40 bg-[#EC990B]/10 px-4 py-3 sm:flex-row sm:items-start">
-          <div className="flex flex-1 items-start gap-3">
-            <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
-            <div className="flex-1 text-sm">
-              <p className="font-medium text-foreground">
-                Algunos filtros requieren Pro
-              </p>
-              <p className="mt-0.5 text-muted-foreground">
-                Hacete Pro para usar franjas horarias, sedes y bache máximo.
-              </p>
-            </div>
-          </div>
-          {onUpgrade && (
-            <Button
-              size="sm"
-              onClick={onUpgrade}
-              className="w-full shrink-0 bg-[#EC990B] text-white hover:bg-[#EC990B]/90 sm:w-auto"
-            >
-              Hacete Pro
-            </Button>
-          )}
-        </div>
-      )}
-
       <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
       <div className="space-y-6">
       {/* Días permitidos */}
@@ -229,6 +204,51 @@ export function RestriccionesPanel({
       </section>
 
       <Separator />
+
+      {/* Solo materias con cupos */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-muted-foreground" />
+          <Label className="text-sm">Solo materias con cupos</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Descarta opciones cuya comisión no tenga cupos disponibles.
+        </p>
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2.5 transition-colors hover:bg-accent">
+          <Switch
+            checked={soloCupos}
+            onCheckedChange={onSoloCuposChange}
+          />
+          <span className="flex-1 text-sm">Mostrar solo con cupos</span>
+        </label>
+      </section>
+
+      <Separator />
+
+      {!isPaid && (
+        <div className="flex flex-col gap-3 rounded-lg border border-[#EC990B]/40 bg-[#EC990B]/10 px-4 py-3 sm:flex-row sm:items-start">
+          <div className="flex flex-1 items-start gap-3">
+            <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">
+                Algunos filtros requieren Pro
+              </p>
+              <p className="mt-0.5 text-muted-foreground">
+                Hacete Pro para usar franjas horarias, sedes y bache máximo.
+              </p>
+            </div>
+          </div>
+          {onUpgrade && (
+            <Button
+              size="sm"
+              onClick={onUpgrade}
+              className="w-full shrink-0 bg-[#EC990B] text-white hover:bg-[#EC990B]/90 sm:w-auto"
+            >
+              Hacete Pro
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Franjas horarias bloqueadas (multi-día) */}
       <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
@@ -426,26 +446,6 @@ export function RestriccionesPanel({
         </div>
       </section>
       </LockedSection>
-
-      <Separator />
-
-      {/* Solo materias con cupos */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Users className="size-4 text-muted-foreground" />
-          <Label className="text-sm">Solo materias con cupos</Label>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Descarta opciones cuya comisión no tenga cupos disponibles.
-        </p>
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2.5 transition-colors hover:bg-accent">
-          <Switch
-            checked={soloCupos}
-            onCheckedChange={onSoloCuposChange}
-          />
-          <span className="flex-1 text-sm">Mostrar solo con cupos</span>
-        </label>
-      </section>
       </div>
       </div>
     </div>

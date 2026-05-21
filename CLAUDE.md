@@ -2,6 +2,10 @@
 
 App para armar planes de cursada combinando materias, cátedras, profesores y restricciones (días, franjas, sedes). El backend genera todas las combinaciones válidas vía producto cartesiano + filtro de solapamientos. Modelo freemium: anónimo y free igual; usuario Pro (pago único 3 meses por Mercado Pago) desbloquea filtros, favoritos y cap de 100 planes.
 
+## Tracking
+
+- **Linear**: https://linear.app/planify-uba/team/PLA/all — tickets del proyecto.
+
 ## Stack
 
 - **Frontend**: Vite + React + TypeScript + Tailwind + shadcn/ui. Color primario `#861f5c`.

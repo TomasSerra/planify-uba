@@ -3,6 +3,7 @@ import { Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -56,6 +57,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
+  const [isLg, setIsLg] = useState(false);
 
   // Scroll al tope cada vez que cambia el query. En un useEffect (no en
   // onValueChange) para correr DESPUÉS de que cmdk filtró y reordenó.
@@ -64,7 +66,9 @@ export function MateriaSelector({ selected, onChange }: Props) {
   }, [query]);
 
   // El popover se renderiza en un portal, por eso no hereda el ancho del Card.
-  // Lo medimos para que el contenedor de búsqueda matchee el de seleccionadas.
+  // Lo medimos para que el contenedor de búsqueda matchee el de seleccionadas
+  // en desktop. En mobile la columna no tiene un "match" útil — usamos un ancho
+  // estándar centrado.
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -72,6 +76,14 @@ export function MateriaSelector({ selected, onChange }: Props) {
     ro.observe(el);
     setPopoverWidth(el.offsetWidth);
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsLg(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   useEffect(() => {
@@ -124,73 +136,74 @@ export function MateriaSelector({ selected, onChange }: Props) {
 
   return (
     <div ref={wrapperRef} className="flex flex-col gap-3 lg:h-full">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <BookOpen className="size-4" />
-          <span>
-            {selected.length === 0
-              ? "Ninguna materia seleccionada"
-              : `${selected.length} ${selected.length === 1 ? "materia" : "materias"}`}
-          </span>
-        </div>
-
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="size-3.5" />
-              Agregar materia
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="p-0"
-            align="end"
-            style={
-              popoverWidth
-                ? { width: popoverWidth }
-                : { width: "min(520px, calc(100vw - 2rem))" }
-            }
-          >
-            <Command shouldFilter filter={filtrarMateria}>
-              <CommandInput
-                placeholder="Buscar materia..."
-                onValueChange={setQuery}
-              />
-              <CommandList ref={listRef}>
-                {loading && (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    Cargando materias...
-                  </div>
-                )}
-                {error && (
-                  <div className="py-6 text-center text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
-                {!loading && !error && (
-                  <>
-                    <CommandEmpty>No se encontraron materias.</CommandEmpty>
-                    <CommandGroup>
-                      {disponibles.map((m) => (
-                        <CommandItem
-                          key={m.codigo}
-                          value={`${m.nombre} ${m.codigo}`}
-                          onSelect={() => add(m)}
-                        >
-                          <span className="line-clamp-2 flex-1">{m.nombre}</span>
-                          <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                            {m.cant_catedras}{" "}
-                            {m.cant_catedras === 1 ? "cát." : "cáts."}
-                          </span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverAnchor asChild>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BookOpen className="size-4" />
+              <span>
+                {selected.length === 0
+                  ? "Ninguna materia seleccionada"
+                  : `${selected.length} ${selected.length === 1 ? "materia" : "materias"}`}
+              </span>
+            </div>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="size-3.5" />
+                Agregar materia
+              </Button>
+            </PopoverTrigger>
+          </div>
+        </PopoverAnchor>
+        <PopoverContent
+          className="p-0"
+          align={isLg ? "end" : "center"}
+          style={
+            isLg && popoverWidth
+              ? { width: popoverWidth }
+              : { width: "min(520px, calc(100vw - 2rem))" }
+          }
+        >
+          <Command shouldFilter filter={filtrarMateria}>
+            <CommandInput
+              placeholder="Buscar materia..."
+              onValueChange={setQuery}
+            />
+            <CommandList ref={listRef}>
+              {loading && (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Cargando materias...
+                </div>
+              )}
+              {error && (
+                <div className="py-6 text-center text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              {!loading && !error && (
+                <>
+                  <CommandEmpty>No se encontraron materias.</CommandEmpty>
+                  <CommandGroup>
+                    {disponibles.map((m) => (
+                      <CommandItem
+                        key={m.codigo}
+                        value={`${m.nombre} ${m.codigo}`}
+                        onSelect={() => add(m)}
+                      >
+                        <span className="line-clamp-2 flex-1">{m.nombre}</span>
+                        <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                          {m.cant_catedras}{" "}
+                          {m.cant_catedras === 1 ? "cát." : "cáts."}
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {selected.length > 0 && (
         <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
