@@ -174,7 +174,6 @@ function UserMenu() {
   return (
     <div className="flex items-center gap-3">
       <PayChip />
-      <div className="flex flex-col items-end gap-1">
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
@@ -214,8 +213,13 @@ function UserMenu() {
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-56 p-2">
-          <div className="border-b px-2 py-1.5 text-xs text-muted-foreground">
-            {email}
+          <div className="border-b px-2 py-1.5">
+            <div className="truncate text-xs text-muted-foreground">{email}</div>
+            {isPaid && validUntilFormatted && (
+              <div className="mt-0.5 text-[10px] font-medium text-[#EC990B]">
+                Pro hasta {validUntilFormatted}
+              </div>
+            )}
           </div>
           <CambiarCarreraButton onClicked={() => setMenuOpen(false)} />
           <button
@@ -230,12 +234,6 @@ function UserMenu() {
           </button>
         </PopoverContent>
       </Popover>
-      {isPaid && validUntilFormatted && (
-        <span className="hidden truncate text-[10px] font-medium text-[#EC990B] sm:block">
-          Pro hasta {validUntilFormatted}
-        </span>
-      )}
-      </div>
 
       <Dialog open={confirmingLogout} onOpenChange={setConfirmingLogout}>
         <DialogContent>
