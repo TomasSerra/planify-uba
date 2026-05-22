@@ -24,9 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CarreraSelector } from "@/components/CarreraSelector";
 import { MateriaSelector } from "@/components/MateriaSelector";
 import { RestriccionesPanel } from "@/components/RestriccionesPanel";
 import { CalendarioPlan } from "@/components/CalendarioPlan";
+import { CalendarioPlanSkeleton } from "@/components/CalendarioPlanSkeleton";
 import { PlanNavigator } from "@/components/PlanNavigator";
 import { Header } from "@/components/Header";
 import { HistorialPopover } from "@/components/HistorialPopover";
@@ -34,6 +36,8 @@ import { FREE_MAX_PLANES, PRO_MAX_PLANES } from "@/components/PaywallProvider";
 import { api } from "@/lib/api";
 import { pushHistory } from "@/lib/planHistory";
 import { useSubscription } from "@/lib/useSubscription";
+import { markProActive } from "@/lib/useMe";
+import { useCareer } from "@/lib/career";
 import { usePaywall } from "@/lib/paywall";
 import { useAlert } from "@/lib/alert";
 import {
@@ -155,7 +159,7 @@ function PagoStatusDialog({
 
   useEffect(() => {
     if (data?.status === "approved") {
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      markProActive(queryClient);
       const t = setTimeout(onClose, 1500);
       return () => clearTimeout(t);
     }
@@ -423,11 +427,44 @@ export function Home() {
   const [planIdx, setPlanIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Scroll también al mostrar el skeleton: apenas arranca el loading, llevamos
+  // al usuario a la zona del calendario para que vea la animación.
+  useEffect(() => {
+    if (loading) {
+      calendarioRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [loading]);
+
   const [lastGeneratedSignature, setLastGeneratedSignature] = useState<
     string | null
   >(null);
   const [lastGeneratedFilters, setLastGeneratedFilters] =
     useState<FavoriteFilters | null>(null);
+
+  // Al cambiar la carrera del usuario (no en el primer set), limpiar la
+  // selección y el filtro de sedes — las materias y sedes que mostrábamos
+  // ya no aplican a la nueva carrera. También limpiamos resultado/signature
+  // para que no quede un calendario viejo.
+  const { carrera: carreraActual } = useCareer();
+  const lastCarreraRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!carreraActual) return;
+    if (
+      lastCarreraRef.current &&
+      lastCarreraRef.current !== carreraActual
+    ) {
+      setMaterias([]);
+      setSedesPermitidas([]);
+      setResultado(null);
+      setLastGeneratedSignature(null);
+      setError(null);
+    }
+    lastCarreraRef.current = carreraActual;
+  }, [carreraActual]);
 
   const currentSignature = useMemo(
     () =>
@@ -684,7 +721,8 @@ export function Home() {
                 <CardHeader>
                   <CardTitle>Materias</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col lg:min-h-0 lg:flex-1">
+                <CardContent className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+                  {!isAuthenticated && <CarreraSelector />}
                   <MateriaSelector selected={materias} onChange={setMaterias} />
                 </CardContent>
               </Card>
@@ -809,7 +847,21 @@ export function Home() {
           </div>
         )}
 
-        {resultado && resultado.planes.length > 0 && (
+        {loading && (
+          <Card ref={calendarioRef}>
+            <CardHeader>
+              <CardTitle>Calendario</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Generando planes…
+              </p>
+            </CardHeader>
+            <CardContent>
+              <CalendarioPlanSkeleton compacto={calendarioCompacto} />
+            </CardContent>
+          </Card>
+        )}
+
+        {!loading && resultado && resultado.planes.length > 0 && (
           <Card ref={calendarioRef}>
             <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

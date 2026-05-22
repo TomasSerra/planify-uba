@@ -1,11 +1,14 @@
 import type {
+  Carrera,
   Favorite,
   FavoriteFilters,
   MateriaListItem,
   MateriaOpciones,
+  Me,
   Plan,
   PlanRequest,
   PlanResponse,
+  UserProfile,
 } from "./types";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -34,11 +37,6 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
-export interface SubscriptionState {
-  active: boolean;
-  valid_until: string | null;
-}
-
 export interface CheckoutResponse {
   init_point: string;
   external_reference: string;
@@ -49,20 +47,29 @@ export interface PagoStatus {
 }
 
 export const api = {
-  listMaterias: (q?: string) =>
-    request<MateriaListItem[]>(
-      `/materias${q ? `?q=${encodeURIComponent(q)}` : ""}`
-    ),
+  listCarreras: () => request<Carrera[]>("/carreras"),
+  listMaterias: (opts?: { q?: string; carrera?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.q) params.set("q", opts.q);
+    if (opts?.carrera) params.set("carrera", opts.carrera);
+    const qs = params.toString();
+    return request<MateriaListItem[]>(`/materias${qs ? `?${qs}` : ""}`);
+  },
   getMateriaOpciones: (codigo: number) =>
     request<MateriaOpciones>(`/materias/${codigo}/opciones`),
+  getMe: (token: string) => request<Me>("/me", undefined, token),
+  updateProfile: (carrera: string, token: string) =>
+    request<UserProfile>(
+      "/me/profile",
+      { method: "PATCH", body: JSON.stringify({ carrera }) },
+      token
+    ),
   postPlanes: (req: PlanRequest, token?: string | null) =>
     request<PlanResponse>(
       "/planes",
       { method: "POST", body: JSON.stringify(req) },
       token ?? undefined
     ),
-  getSubscription: (token: string) =>
-    request<SubscriptionState>("/me/subscription", undefined, token),
   postCheckout: (token: string) =>
     request<CheckoutResponse>(
       "/pagos/checkout",

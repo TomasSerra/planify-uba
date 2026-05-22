@@ -26,6 +26,7 @@ import {
 import mpIcon from "@/assets/mp-icon.png";
 import { api, API_BASE } from "@/lib/api";
 import { useAlert } from "@/lib/alert";
+import { markProActive } from "@/lib/useMe";
 import { PaywallContext, type PaywallReason } from "@/lib/paywall";
 
 // Mantener en sync con backend: SUBSCRIPTION_PRICE_ARS y SUBSCRIPTION_DAYS.
@@ -125,7 +126,7 @@ function PaywallDialog({
 
   useEffect(() => {
     if (qrPagoStatus?.status !== "approved") return;
-    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    markProActive(queryClient);
     const t = setTimeout(() => onOpenChange(false), 1800);
     return () => clearTimeout(t);
   }, [qrPagoStatus?.status, queryClient, onOpenChange]);
@@ -184,7 +185,7 @@ function PaywallDialog({
       message:
         "Tu suscripción está activa — no hace falta pagar de nuevo. Recargá la página si no ves los beneficios desbloqueados.",
     });
-    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    queryClient.invalidateQueries({ queryKey: ["me"] });
     onOpenChange(false);
     return true;
   }

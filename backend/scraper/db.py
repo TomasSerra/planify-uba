@@ -17,14 +17,25 @@ def get_conn():
         yield conn
 
 
-def upsert_materia(conn: psycopg.Connection, codigo: int, nombre: str) -> None:
+def upsert_materia(
+    conn: psycopg.Connection,
+    codigo: int,
+    nombre: str,
+    carrera: str | None,
+) -> None:
+    # Carrera sólo se setea en INSERT y cuando el row existente la tiene NULL,
+    # para no pisar el dato si la misma materia aparece scrapeada bajo otra
+    # pestaña en una corrida posterior. La dedup por catedra_id en discover.py
+    # asegura que el primer match gana, consistente con el modelo 1:N.
     conn.execute(
         """
-        INSERT INTO materias (codigo, nombre)
-        VALUES (%s, %s)
-        ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre
+        INSERT INTO materias (codigo, nombre, carrera)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (codigo) DO UPDATE SET
+            nombre  = EXCLUDED.nombre,
+            carrera = COALESCE(materias.carrera, EXCLUDED.carrera)
         """,
-        (codigo, nombre),
+        (codigo, nombre, carrera),
     )
 
 
@@ -120,8 +131,12 @@ def resolve_obligatorio(conn: psycopg.Connection, catedra_id: int) -> None:
     )
 
 
-def save_detalle(conn: psycopg.Connection, detalle: CatedraDetalle) -> None:
-    upsert_materia(conn, detalle.materia_codigo, detalle.materia_nombre)
+def save_detalle(
+    conn: psycopg.Connection,
+    detalle: CatedraDetalle,
+    carrera: str | None = None,
+) -> None:
+    upsert_materia(conn, detalle.materia_codigo, detalle.materia_nombre, carrera)
     upsert_catedra(
         conn,
         detalle.catedra_id,

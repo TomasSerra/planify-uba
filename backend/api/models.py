@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import time
+from datetime import datetime, time
 
 from pydantic import BaseModel
 
@@ -85,3 +85,27 @@ class MateriaOpciones(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     db: str
+
+
+class Carrera(BaseModel):
+    slug: str
+    nombre: str
+    sedes: list[str] = []
+
+
+class UserProfile(BaseModel):
+    carrera: str | None = None
+
+
+class UpdateProfileRequest(BaseModel):
+    carrera: str
+
+
+class SubscriptionState(BaseModel):
+    active: bool
+    valid_until: datetime | None
+
+
+class Me(BaseModel):
+    carrera: str | None = None
+    subscription: SubscriptionState

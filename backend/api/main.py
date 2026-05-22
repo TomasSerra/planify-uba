@@ -14,6 +14,7 @@ log = logging.getLogger("main")
 from .auth import AuthUser, optional_user
 from .db import pool
 from .models import (
+    Carrera,
     CatedraDetail,
     CatedraOpcion,
     CatedraSummary,
@@ -26,9 +27,10 @@ from .models import (
     MateriaOpciones,
 )
 from .favoritos import router as favoritos_router
+from .me import router as me_router
 from .pagos import router as pagos_router
 from .planes import PlanRequest, PlanResponse, armar_planes
-from .subs import has_active_subscription, router as subs_router
+from .subs import has_active_subscription
 
 
 def _fetch_obliga_map(conn, comision_ids: list[int]) -> dict[int, list[CursoSummary]]:
@@ -86,7 +88,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(subs_router)
+app.include_router(me_router)
 app.include_router(pagos_router, prefix="/pagos")
 app.include_router(favoritos_router, prefix="/favoritos")
 
@@ -102,21 +104,51 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", db=db_status)
 
 
+@app.get("/carreras", response_model=list[Carrera])
+def list_carreras() -> list[Carrera]:
+    # `sedes` se computa desde `cursos.sede` para que el FE filtre el panel
+    # de sedes y el dropdown por materia a sólo las que existen en la carrera.
+    sql = """
+        SELECT
+            c.slug,
+            c.nombre,
+            COALESCE(
+                array_agg(DISTINCT cu.sede ORDER BY cu.sede)
+                  FILTER (WHERE cu.sede IS NOT NULL AND cu.sede <> ''),
+                ARRAY[]::text[]
+            ) AS sedes
+        FROM carreras c
+        LEFT JOIN materias m  ON m.carrera = c.slug
+        LEFT JOIN catedras ca ON ca.materia_codigo = m.codigo
+        LEFT JOIN cursos cu   ON cu.catedra_id = ca.id
+        GROUP BY c.slug, c.nombre, c.sort_order
+        ORDER BY c.sort_order, c.nombre
+    """
+    with pool.connection() as conn:
+        rows = conn.execute(sql).fetchall()
+    return [Carrera(**row) for row in rows]
+
+
 @app.get("/materias", response_model=list[MateriaListItem])
 def list_materias(
     q: str | None = Query(None, description="Filtrar por nombre (case-insensitive)"),
+    carrera: str | None = Query(None, description="Slug de carrera"),
 ) -> list[MateriaListItem]:
     sql = """
         SELECT m.codigo, m.nombre, COUNT(c.id) AS cant_catedras
           FROM materias m
           LEFT JOIN catedras c ON c.materia_codigo = m.codigo
-         WHERE %(pattern)s::text IS NULL OR m.nombre ILIKE %(pattern)s
+         WHERE (%(pattern)s::text IS NULL OR m.nombre ILIKE %(pattern)s)
+           AND (%(carrera)s::text IS NULL OR m.carrera = %(carrera)s)
          GROUP BY m.codigo, m.nombre
          ORDER BY m.nombre
     """
     pattern = f"%{q}%" if q else None
     with pool.connection() as conn:
-        rows = conn.execute(sql, {"pattern": pattern}).fetchall()
+        rows = conn.execute(
+            sql,
+            {"pattern": pattern, "carrera": carrera},
+        ).fetchall()
     return [MateriaListItem(**row) for row in rows]
 
 

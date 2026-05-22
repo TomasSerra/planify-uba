@@ -1,10 +1,31 @@
 -- Schema de PostgreSQL para horarios de la Facultad de Psicología (UBA).
 -- Ejecutar contra una DB recién creada:  psql horarios < schema.sql
 
+-- Carreras de la facultad. El slug se mapea desde el id del tab del HTML de
+-- academica.psi.uba.ar (PS/PR/LM/TE) en el scraper.
+CREATE TABLE IF NOT EXISTS carreras (
+    slug        TEXT PRIMARY KEY,
+    nombre      TEXT NOT NULL,
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+
+INSERT INTO carreras (slug, nombre, sort_order) VALUES
+    ('licenciatura-psicologia',    'Licenciatura en Psicología',          1),
+    ('profesorado-psicologia',     'Profesorado en Psicología',           2),
+    ('licenciatura-musicoterapia', 'Licenciatura en Musicoterapia',       3),
+    ('licenciatura-terap-ocup',    'Licenciatura en Terapia Ocupacional', 4)
+ON CONFLICT (slug) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS materias (
     codigo  INTEGER PRIMARY KEY,
-    nombre  TEXT NOT NULL
+    nombre  TEXT NOT NULL,
+    carrera TEXT REFERENCES carreras(slug)
 );
+
+-- Para DBs preexistentes (Neon) que ya tenían materias sin la columna.
+ALTER TABLE materias ADD COLUMN IF NOT EXISTS carrera TEXT REFERENCES carreras(slug);
+
+CREATE INDEX IF NOT EXISTS idx_materias_carrera ON materias(carrera);
 
 CREATE TABLE IF NOT EXISTS catedras (
     id              INTEGER PRIMARY KEY,
@@ -102,4 +123,12 @@ CREATE TABLE IF NOT EXISTS pending_checkouts (
     external_reference TEXT PRIMARY KEY,
     init_point         TEXT NOT NULL,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Perfil mínimo del usuario logueado (Firebase uid). Sólo se materializa una
+-- fila cuando el usuario elige carrera por primera vez en el modal forced.
+CREATE TABLE IF NOT EXISTS user_profile (
+    uid         TEXT PRIMARY KEY,
+    carrera     TEXT NOT NULL REFERENCES carreras(slug),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

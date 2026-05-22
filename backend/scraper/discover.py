@@ -10,12 +10,22 @@ from .http import fetch
 
 CATEDRA_HREF_RE = re.compile(r"catedra=(\d+)")
 
+# Las 4 pestañas de Ope154_.php (<div id="PS|PR|LM|TE">). Si una materia aparece
+# en más de una pestaña, gana la primera que se vea (ver dedup por catedra_id).
+TAB_ID_TO_CARRERA = {
+    "PS": "licenciatura-psicologia",
+    "PR": "profesorado-psicologia",
+    "LM": "licenciatura-musicoterapia",
+    "TE": "licenciatura-terap-ocup",
+}
+
 
 @dataclass
 class IndexEntry:
     catedra_id: int
     materia_nombre: str
     titular_raw: str  # incluye prefijo " - Lic. ..." tal como viene
+    carrera_slug: str | None
 
 
 def discover_catedras() -> list[IndexEntry]:
@@ -25,6 +35,7 @@ def discover_catedras() -> list[IndexEntry]:
     entries: dict[int, IndexEntry] = {}
 
     for table in soup.find_all("table", class_="table_tabs"):
+        carrera_slug = _carrera_slug_for_table(table)
         for row in table.find_all("tr"):
             cells = row.find_all("td")
             if len(cells) < 3:
@@ -46,9 +57,17 @@ def discover_catedras() -> list[IndexEntry]:
                 catedra_id=catedra_id,
                 materia_nombre=materia_nombre,
                 titular_raw=titular_raw,
+                carrera_slug=carrera_slug,
             )
 
     return sorted(entries.values(), key=lambda e: e.catedra_id)
+
+
+def _carrera_slug_for_table(table) -> str | None:
+    parent_div = table.find_parent("div", id=True)
+    if parent_div is None:
+        return None
+    return TAB_ID_TO_CARRERA.get(parent_div.get("id"))
 
 
 def _clean(text: str) -> str:

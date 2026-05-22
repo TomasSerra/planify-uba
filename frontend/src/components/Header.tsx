@@ -25,6 +25,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
+import { useCareer } from "@/lib/career";
 
 const MESES_CORTOS = [
   "Ene",
@@ -142,6 +143,7 @@ function PayChip() {
 function UserMenu() {
   const { user, isAuthenticated, isLoading, openLogin, logout } = useAuth();
   const { isPaid, validUntil } = useSubscription();
+  const { carreraNombre } = useCareer();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const email = user?.email ?? "";
@@ -178,10 +180,15 @@ function UserMenu() {
             type="button"
             className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent sm:gap-2 sm:rounded-2xl sm:border sm:border-border sm:bg-white sm:py-1 sm:pl-3 sm:pr-1"
           >
-            <div className="hidden flex-col leading-tight sm:flex text-left">
-              <span className="text-xs text-foreground">{email}</span>
+            <div className="hidden max-w-[12rem] flex-col leading-tight sm:flex text-left">
+              <span className="truncate text-xs text-foreground">{email}</span>
+              {carreraNombre && (
+                <span className="truncate text-[10px] text-muted-foreground">
+                  {carreraNombre}
+                </span>
+              )}
               {isPaid && validUntilFormatted && (
-                <span className="text-[10px] font-medium text-[#EC990B]">
+                <span className="mt-0.5 truncate text-[10px] font-medium text-[#EC990B]">
                   Pro hasta {validUntilFormatted}
                 </span>
               )}
@@ -212,6 +219,7 @@ function UserMenu() {
           <div className="border-b px-2 py-1.5 text-xs text-muted-foreground">
             {email}
           </div>
+          <CambiarCarreraButton onClicked={() => setMenuOpen(false)} />
           <button
             type="button"
             onClick={() => {
@@ -255,6 +263,26 @@ function UserMenu() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function CambiarCarreraButton({ onClicked }: { onClicked: () => void }) {
+  // Sólo tiene sentido cuando ya hay una carrera guardada en perfil. Mientras
+  // se carga el profile (o no hay todavía), no mostramos la opción para no
+  // chocar con el modal forced.
+  const { carrera, openChangeCarrera } = useCareer();
+  if (!carrera) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onClicked();
+        openChangeCarrera();
+      }}
+      className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+    >
+      <GraduationCap className="size-4" /> Cambiar carrera
+    </button>
   );
 }
 

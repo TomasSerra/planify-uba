@@ -8,7 +8,16 @@ import { AuthProvider } from "./components/AuthProvider";
 import "./index.css";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      // Evita re-fetchear al volver de otra pestaña del navegador. Para `["me"]`
+      // además usamos staleTime: Infinity localmente — el único refresh ocurre
+      // vía mutations (cambio de carrera, pago acreditado).
+      refetchOnWindowFocus: false,
+    },
+  },
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

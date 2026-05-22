@@ -17,6 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { useCareer } from "@/lib/career";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
 import { SEDES } from "@/lib/types";
@@ -369,6 +370,10 @@ function SedeDropdown({
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { sedesDisponibles } = useCareer();
+  // Para el label usamos SEDES (lookup completo) por si la selección quedó
+  // en una sede que ya no aparece en `sedesDisponibles` — improbable porque
+  // al cambiar de carrera se resetea, pero es resiliente.
   const sel = SEDES.find((s) => s.codigo === selected);
   const label = sel ? `${sel.nombre} (${sel.codigo})` : "Cualquiera";
 
@@ -414,7 +419,7 @@ function SedeDropdown({
           <span>Cualquier sede</span>
         </button>
         <Separator className="my-1" />
-        {SEDES.map((s) => (
+        {sedesDisponibles.map((s) => (
           <button
             key={s.codigo}
             type="button"

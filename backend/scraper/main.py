@@ -18,6 +18,8 @@ def scrape_catedra(catedra_id: int) -> None:
     if detalle is None:
         print(f"  catedra={catedra_id}: sin datos parseables (omitida)")
         return
+    # Modo --catedra: no pasamos por discovery, así que no sabemos la carrera.
+    # save_detalle deja la columna sin tocar si la fila ya existe.
     with get_conn() as conn:
         save_detalle(conn, detalle)
     counts = Counter(c.tipo for c in detalle.cursos)
@@ -40,7 +42,7 @@ def scrape_many(entries: list[IndexEntry], delay: float) -> None:
                 print(f"{prefix} catedra={entry.catedra_id}: sin datos (omitida)")
                 continue
             with get_conn() as conn:
-                save_detalle(conn, detalle)
+                save_detalle(conn, detalle, carrera=entry.carrera_slug)
             counts = Counter(c.tipo for c in detalle.cursos)
             print(
                 f"{prefix} catedra={entry.catedra_id}: {detalle.materia_nombre} "

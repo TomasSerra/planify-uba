@@ -122,6 +122,28 @@ export const DIAS = [
   "sabado",
 ] as const;
 
+export interface Carrera {
+  slug: string;
+  nombre: string;
+  sedes: string[];
+}
+
+export interface UserProfile {
+  carrera: string | null;
+}
+
+export interface SubscriptionState {
+  active: boolean;
+  valid_until: string | null;
+}
+
+export interface Me {
+  carrera: string | null;
+  subscription: SubscriptionState;
+}
+
+export const DEFAULT_CARRERA = "licenciatura-psicologia";
+
 export const SEDES: Array<{ codigo: string; nombre: string }> = [
   { codigo: "HY", nombre: "Hipólito Yrigoyen" },
   { codigo: "IN", nombre: "Independencia" },

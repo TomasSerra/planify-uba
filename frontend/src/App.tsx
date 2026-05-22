@@ -3,19 +3,22 @@ import { Home } from "./pages/Home";
 import { Favoritos } from "./pages/Favoritos";
 import { PlanesEstudio } from "./pages/PlanesEstudio";
 import { PaywallProvider } from "./components/PaywallProvider";
+import { CareerProvider } from "./components/CareerProvider";
 
 export default function App() {
   return (
     <PaywallProvider>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/favoritos" element={<Favoritos />} />
-        <Route path="/planes-estudio" element={<PlanesEstudio />} />
-        {/* MP redirige acá tras éxito o falla. Home detecta la ruta, abre el
-            dialog correspondiente, y limpia la URL a "/". */}
-        <Route path="/pago-exitoso" element={<Home />} />
-        <Route path="/pago-error" element={<Home />} />
-      </Routes>
+      <CareerProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/favoritos" element={<Favoritos />} />
+          <Route path="/planes-estudio" element={<PlanesEstudio />} />
+          {/* MP redirige acá tras éxito o falla. Home detecta la ruta, abre el
+              dialog correspondiente, y limpia la URL a "/". */}
+          <Route path="/pago-exitoso" element={<Home />} />
+          <Route path="/pago-error" element={<Home />} />
+        </Routes>
+      </CareerProvider>
     </PaywallProvider>
   );
 }

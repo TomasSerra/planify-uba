@@ -1,37 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "./api";
 import { useAuth } from "./useAuth";
+import { useMe } from "./useMe";
 
+// Wrapper sobre useMe(): selecciona el bloque `subscription` y expone el mismo
+// contrato que tenían los call sites originales. No genera una request propia.
 export function useSubscription() {
-  const {
-    user,
-    isAuthenticated,
-    isLoading: userLoading,
-    getAccessTokenSilently,
-  } = useAuth();
-
-  const query = useQuery({
-    queryKey: ["subscription", user?.uid],
-    enabled: !userLoading && isAuthenticated,
-    queryFn: async () => {
-      const token = await getAccessTokenSilently();
-      return api.getSubscription(token);
-    },
-  });
+  const { isAuthenticated, isLoading: userLoading } = useAuth();
+  const me = useMe();
 
   if (userLoading) {
-    // Aún no sabemos si hay sesión: marcar como cargando para que el FE
-    // pueda mostrar skeletons en vez del estado "free" prematuramente.
     return { isPaid: false, validUntil: null as Date | null, isLoading: true };
   }
   if (!isAuthenticated) {
     return { isPaid: false, validUntil: null as Date | null, isLoading: false };
   }
 
-  const data = query.data;
+  const sub = me.data?.subscription;
   return {
-    isPaid: !!data?.active,
-    validUntil: data?.valid_until ? new Date(data.valid_until) : null,
-    isLoading: query.isLoading,
+    isPaid: !!sub?.active,
+    validUntil: sub?.valid_until ? new Date(sub.valid_until) : null,
+    isLoading: me.isLoading,
   };
 }

@@ -19,7 +19,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { DIAS, SEDES, type FranjaExcluida } from "@/lib/types";
+import { DIAS, type FranjaExcluida } from "@/lib/types";
+import { useCareer } from "@/lib/career";
 
 function LockedSection({
   locked,
@@ -93,6 +94,7 @@ export function RestriccionesPanel({
   isLoading,
   onUpgrade,
 }: Props) {
+  const { sedesDisponibles } = useCareer();
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -354,7 +356,7 @@ export function RestriccionesPanel({
           Si no seleccionás ninguna, se permiten todas.
         </p>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {SEDES.map((s) => (
+          {sedesDisponibles.map((s) => (
             <label
               key={s.codigo}
               className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 transition-colors hover:bg-accent"

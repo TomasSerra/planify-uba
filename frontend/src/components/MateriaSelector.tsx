@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/command";
 import { MateriaCard } from "@/components/MateriaCard";
 import { api } from "@/lib/api";
+import { useCareer } from "@/lib/career";
 import type { MateriaListItem, MateriaSeleccionada } from "@/lib/types";
 
 interface SeleccionConNombre extends MateriaSeleccionada {
@@ -49,6 +50,7 @@ function filtrarMateria(value: string, search: string): number {
 }
 
 export function MateriaSelector({ selected, onChange }: Props) {
+  const { carrera } = useCareer();
   const [open, setOpen] = useState(false);
   const [materias, setMaterias] = useState<MateriaListItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,11 +89,17 @@ export function MateriaSelector({ selected, onChange }: Props) {
   }, []);
 
   useEffect(() => {
+    // Esperar a tener carrera (usuario logueado: hasta que cargue el profile).
+    if (!carrera) {
+      setMaterias([]);
+      setLoading(true);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
     api
-      .listMaterias()
+      .listMaterias({ carrera })
       .then((d) => {
         if (!cancelled) setMaterias(d);
       })
@@ -102,7 +110,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [carrera]);
 
   const selectedIds = useMemo(
     () => new Set(selected.map((m) => m.codigo)),
