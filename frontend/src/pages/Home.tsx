@@ -298,6 +298,30 @@ function SaveFavoriteButton({
 
 const ALL_DIAS: string[] = [...DIAS];
 
+// `BrushCleaning` aún no existe en lucide-react 0.460.0; inline para evitar el bump.
+function BrushCleaning({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m16 22-1-4" />
+      <path d="M19 13.99a1 1 0 0 0 1-1V12a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v.99a1 1 0 0 0 1 1" />
+      <path d="M5 14h14l1.973 6.767A1 1 0 0 1 20 22H4a1 1 0 0 1-.973-1.233z" />
+      <path d="m8 22 1-4" />
+    </svg>
+  );
+}
+
 interface UrlState {
   m: { c: number; ca: number | null; p: string[] | null; se?: string | null }[];
   d: string[];
@@ -639,6 +663,22 @@ export function Home() {
     );
   }
 
+  function limpiarTodo() {
+    setMaterias([]);
+    setDiasPermitidos(ALL_DIAS);
+    setFranjas([]);
+    setSedesPermitidas([]);
+    setMaxBacheHoras(null);
+    setSoloCupos(false);
+    setResultado(null);
+    setPlanIdx(0);
+    setError(null);
+    setLastGeneratedSignature(null);
+    setLastGeneratedFilters(null);
+    sessionStorage.removeItem("horarios:last-home-search");
+    navigate("/", { replace: true });
+  }
+
   function restoreFromHistory(entry: PlanHistoryEntry) {
     const seleccion: SeleccionConNombre[] = entry.filters.materias.map((m) => ({
       codigo: m.codigo,
@@ -798,19 +838,32 @@ export function Home() {
                   ? "Seleccioná al menos una materia para generar planes."
                   : `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`}
               </p>
-              <Button
-                size="lg"
-                onClick={generar}
-                disabled={loading || materias.length === 0 || diasPermitidos.length === 0 || sinCambios}
-                className="bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
-              >
-                {loading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Sparkles className="size-4" />
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
+                {resultado !== null && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={limpiarTodo}
+                    disabled={loading}
+                  >
+                    <BrushCleaning className="size-4" />
+                    Limpiar Todo
+                  </Button>
                 )}
-                {loading ? "Generando..." : "Generar planes"}
-              </Button>
+                <Button
+                  size="lg"
+                  onClick={generar}
+                  disabled={loading || materias.length === 0 || diasPermitidos.length === 0 || sinCambios}
+                  className="bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
+                >
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  {loading ? "Generando..." : "Generar planes"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

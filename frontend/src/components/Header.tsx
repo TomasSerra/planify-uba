@@ -174,6 +174,7 @@ function UserMenu() {
   return (
     <div className="flex items-center gap-3">
       <PayChip />
+      <div className="flex flex-col items-end gap-1">
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
@@ -189,11 +190,6 @@ function UserMenu() {
                   </span>
                 )}
               </div>
-              {isPaid && validUntilFormatted && (
-                <span className="mt-1 truncate text-[10px] font-medium text-[#EC990B]">
-                  Pro hasta {validUntilFormatted}
-                </span>
-              )}
             </div>
             <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               {user?.photoURL ? (
@@ -234,6 +230,12 @@ function UserMenu() {
           </button>
         </PopoverContent>
       </Popover>
+      {isPaid && validUntilFormatted && (
+        <span className="hidden truncate text-[10px] font-medium text-[#EC990B] sm:block">
+          Pro hasta {validUntilFormatted}
+        </span>
+      )}
+      </div>
 
       <Dialog open={confirmingLogout} onOpenChange={setConfirmingLogout}>
         <DialogContent>

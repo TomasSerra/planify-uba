@@ -324,11 +324,11 @@ def search_cursos(
 
 def _request_uses_filters(req: PlanRequest) -> bool:
     """Detecta si el request usa alguna feature Pro (filtros)."""
-    if req.dias_excluidos or req.franjas_excluidas or req.sedes_permitidas:
+    # `dias_excluidos` y `solo_con_cupos` son gratis (el FE no los gatea).
+    # Pro: franjas, sedes, bache máximo, y cátedra/profesores/sede por materia.
+    if req.franjas_excluidas or req.sedes_permitidas:
         return True
     if req.max_bache_horas is not None:
-        return True
-    if req.solo_con_cupos:
         return True
     for m in req.materias:
         if m.catedra_id is not None or m.profesores is not None or m.sede is not None:
@@ -351,8 +351,8 @@ def post_planes(
             raise HTTPException(
                 status_code=403,
                 detail=(
-                    "Los filtros (días, franjas, sedes, cátedra y "
-                    "profesores) son una función Pro. Suscribite para "
+                    "Los filtros (franjas, sedes, bache máximo, cátedra "
+                    "y profesores) son una función Pro. Suscribite para "
                     "usarlos."
                 ),
             )
