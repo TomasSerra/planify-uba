@@ -180,15 +180,17 @@ function UserMenu() {
             type="button"
             className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent sm:gap-2 sm:rounded-2xl sm:border sm:border-border sm:bg-white sm:py-1 sm:pl-3 sm:pr-1"
           >
-            <div className="hidden max-w-[12rem] flex-col leading-tight sm:flex text-left">
-              <span className="truncate text-xs text-foreground">{email}</span>
-              {carreraNombre && (
-                <span className="truncate text-[10px] text-muted-foreground">
-                  {carreraNombre}
-                </span>
-              )}
+            <div className="hidden flex-col leading-tight sm:flex text-left">
+              <div className="flex max-w-[12rem] flex-col">
+                <span className="truncate text-xs text-foreground">{email}</span>
+                {carreraNombre && (
+                  <span className="truncate text-[10px] text-muted-foreground">
+                    {carreraNombre}
+                  </span>
+                )}
+              </div>
               {isPaid && validUntilFormatted && (
-                <span className="mt-0.5 truncate text-[10px] font-medium text-[#EC990B]">
+                <span className="mt-1 truncate text-[10px] font-medium text-[#EC990B]">
                   Pro hasta {validUntilFormatted}
                 </span>
               )}
