@@ -756,16 +756,18 @@ export function Home() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto]">
           <div className="flex flex-col gap-3 lg:flex-row">
             <HistorialPopover onRestore={restoreFromHistory} />
-            <div className="relative min-w-0 flex-1">
-              <Card className="flex flex-col lg:absolute lg:inset-0">
-                <CardHeader>
-                  <CardTitle>Materias</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
-                  {!isAuthenticated && <CarreraSelector />}
-                  <MateriaSelector selected={materias} onChange={setMaterias} />
-                </CardContent>
-              </Card>
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              {!isAuthenticated && <CarreraSelector />}
+              <div className="relative flex-1">
+                <Card className="flex flex-col lg:absolute lg:inset-0">
+                  <CardHeader>
+                    <CardTitle>Materias</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+                    <MateriaSelector selected={materias} onChange={setMaterias} />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
 

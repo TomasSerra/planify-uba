@@ -165,6 +165,9 @@ export function MateriaSelector({ selected, onChange }: Props) {
         </PopoverAnchor>
         <PopoverContent
           className="p-0"
+          side="bottom"
+          sideOffset={8}
+          avoidCollisions={false}
           align={isLg ? "end" : "center"}
           style={
             isLg && popoverWidth

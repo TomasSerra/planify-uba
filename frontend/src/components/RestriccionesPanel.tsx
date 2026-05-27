@@ -335,45 +335,49 @@ export function RestriccionesPanel({
       <Separator />
 
       {/* Sedes */}
-      <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MapPin className="size-4 text-muted-foreground" />
-            <Label className="text-sm">Sedes permitidas</Label>
-          </div>
-          {sedesPermitidas.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onSedesChange([])}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              Limpiar
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Si no seleccionás ninguna, se permiten todas.
-        </p>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {sedesDisponibles.map((s) => (
-            <label
-              key={s.codigo}
-              className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 transition-colors hover:bg-accent"
-            >
-              <Checkbox
-                checked={sedesPermitidas.includes(s.codigo)}
-                onCheckedChange={() => toggleSede(s.codigo)}
-              />
-              <span className="flex-1 text-sm">{s.nombre}</span>
-              <span className="text-xs text-muted-foreground">{s.codigo}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-      </LockedSection>
+      {sedesDisponibles.length > 1 && (
+        <>
+          <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="size-4 text-muted-foreground" />
+                  <Label className="text-sm">Sedes permitidas</Label>
+                </div>
+                {sedesPermitidas.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onSedesChange([])}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Si no seleccionás ninguna, se permiten todas.
+              </p>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {sedesDisponibles.map((s) => (
+                  <label
+                    key={s.codigo}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 transition-colors hover:bg-accent"
+                  >
+                    <Checkbox
+                      checked={sedesPermitidas.includes(s.codigo)}
+                      onCheckedChange={() => toggleSede(s.codigo)}
+                    />
+                    <span className="flex-1 text-sm">{s.nombre}</span>
+                    <span className="text-xs text-muted-foreground">{s.codigo}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          </LockedSection>
 
-      <Separator />
+          <Separator />
+        </>
+      )}
 
       {/* Bache máximo */}
       <LockedSection locked={!isPaid} onUpgrade={onUpgrade}>
