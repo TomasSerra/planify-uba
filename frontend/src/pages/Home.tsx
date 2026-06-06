@@ -130,8 +130,11 @@ function PagoErrorDialog({
   );
 }
 
-const PAGO_POLL_INTERVAL_MS = 2000;
-const PAGO_MAX_WAIT_MS = 30_000;
+const PAGO_POLL_INTERVAL_MS = 5000;
+// Subido a 45s tras llevar el intervalo de poll de 2s → 5s: nos da ~9 polls
+// dentro de la ventana, suficiente margen para que el webhook de MP llegue
+// incluso cuando tarda 20-30s.
+const PAGO_MAX_WAIT_MS = 45_000;
 
 function PagoStatusDialog({
   externalReference,
@@ -408,7 +411,7 @@ export function Home() {
     if (!decoded) return;
     (async () => {
       try {
-        const all = await api.listMaterias();
+        const all = await api.listMateriasCached();
         const byCodigo = new Map(all.map((m) => [m.codigo, m.nombre]));
         const seleccion: SeleccionConNombre[] = decoded.m.map((x) => ({
           codigo: x.c,

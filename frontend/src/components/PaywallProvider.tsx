@@ -121,7 +121,7 @@ function PaywallDialog({
       return api.getPagoStatus(externalReference);
     },
     enabled: open && showQR && !!externalReference,
-    refetchInterval: (q) => (q.state.data?.status === "approved" ? false : 2000),
+    refetchInterval: (q) => (q.state.data?.status === "approved" ? false : 5000),
   });
 
   useEffect(() => {

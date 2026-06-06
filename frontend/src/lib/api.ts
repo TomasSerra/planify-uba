@@ -46,14 +46,54 @@ export interface PagoStatus {
   status: "pending" | "approved";
 }
 
+// Cache de listMaterias en localStorage: el scraper corre diario, los datos
+// son estables. Evita pegarle al BE cada vez que se monta el selector.
+const MATERIAS_TTL_MS = 60 * 60 * 1000;
+// Bumpear cuando cambie el shape de MateriaListItem (campo nuevo, rename,
+// etc.) para invalidar caches viejas sin esperar el TTL.
+const MATERIAS_CACHE_VERSION = 1;
+
+function readMateriasCache(key: string): MateriaListItem[] | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, expires, version } = JSON.parse(raw);
+    if (version !== MATERIAS_CACHE_VERSION) return null;
+    if (typeof expires !== "number" || expires < Date.now()) return null;
+    return data as MateriaListItem[];
+  } catch {
+    return null;
+  }
+}
+
+function writeMateriasCache(key: string, data: MateriaListItem[]): void {
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        data,
+        expires: Date.now() + MATERIAS_TTL_MS,
+        version: MATERIAS_CACHE_VERSION,
+      })
+    );
+  } catch {
+    /* localStorage lleno o deshabilitado: degradamos silenciosamente */
+  }
+}
+
 export const api = {
   listCarreras: () => request<Carrera[]>("/carreras"),
-  listMaterias: (opts?: { q?: string; carrera?: string }) => {
-    const params = new URLSearchParams();
-    if (opts?.q) params.set("q", opts.q);
-    if (opts?.carrera) params.set("carrera", opts.carrera);
-    const qs = params.toString();
-    return request<MateriaListItem[]>(`/materias${qs ? `?${qs}` : ""}`);
+  // Filtro por nombre ocurre client-side en MateriaSelector vía cmdk; acá solo
+  // cacheamos el listado completo (con TTL) por carrera.
+  listMateriasCached: async (carrera?: string): Promise<MateriaListItem[]> => {
+    const key = `materias:${carrera ?? "all"}`;
+    const cached = readMateriasCache(key);
+    if (cached) return cached;
+    const data = await request<MateriaListItem[]>(
+      `/materias${carrera ? `?carrera=${encodeURIComponent(carrera)}` : ""}`
+    );
+    writeMateriasCache(key, data);
+    return data;
   },
   getMateriaOpciones: (codigo: number) =>
     request<MateriaOpciones>(`/materias/${codigo}/opciones`),

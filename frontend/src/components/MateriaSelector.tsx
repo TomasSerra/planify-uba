@@ -99,7 +99,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
     setLoading(true);
     setError(null);
     api
-      .listMaterias({ carrera })
+      .listMateriasCached(carrera)
       .then((d) => {
         if (!cancelled) setMaterias(d);
       })

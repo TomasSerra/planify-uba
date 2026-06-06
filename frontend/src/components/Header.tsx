@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
 import { useCareer } from "@/lib/career";
+import { hasPlanImage } from "@/lib/planEstudio";
 
 const MESES_CORTOS = [
   "Ene",
@@ -42,11 +43,21 @@ const MESES_CORTOS = [
   "Dic",
 ] as const;
 
-const TABS = [
-  { to: "/", label: "Inicio", icon: HomeIcon },
-  { to: "/favoritos", label: "Mis Planes", icon: Heart },
-  { to: "/planes-estudio", label: "Planes de estudio", icon: GraduationCap },
-];
+function useTabs() {
+  const { isAuthenticated } = useAuth();
+  const { carrera } = useCareer();
+  // Misma condición exacta que PlanesEstudio para mostrar la vista única.
+  // Si no coincide, el label de la tab promete algo que la página no entrega.
+  const planLabel =
+    isAuthenticated && hasPlanImage(carrera)
+      ? "Plan de estudio"
+      : "Planes de estudio";
+  return [
+    { to: "/", label: "Inicio", icon: HomeIcon },
+    { to: "/favoritos", label: "Mis Planes", icon: Heart },
+    { to: "/planes-estudio", label: planLabel, icon: GraduationCap },
+  ];
+}
 
 function resolveTabTo(to: string): string {
   if (to !== "/") return to;
@@ -57,6 +68,7 @@ function resolveTabTo(to: string): string {
 
 function Tabs() {
   const { pathname } = useLocation();
+  const TABS = useTabs();
   return (
     <nav className="hidden items-center gap-4 sm:flex">
       {TABS.map(({ to, label, icon: Icon }) => {
@@ -86,6 +98,7 @@ function Tabs() {
 
 function MobileBottomNav() {
   const { pathname } = useLocation();
+  const TABS = useTabs();
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"

@@ -6,8 +6,9 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 log = logging.getLogger("main")
 
@@ -80,6 +81,8 @@ _allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
 if (_app_url := os.environ.get("APP_URL")) and _app_url not in _allowed_origins:
     _allowed_origins.append(_app_url.rstrip("/"))
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
@@ -91,6 +94,20 @@ app.add_middleware(
 app.include_router(me_router)
 app.include_router(pagos_router, prefix="/pagos")
 app.include_router(favoritos_router, prefix="/favoritos")
+
+
+# Datos servidos por el scraper diario (06:00 UTC) son estáticos durante el día.
+# `stale-while-revalidate` permite al CDN/browser servir desde cache 24h más
+# mientras revalida en background.
+_STATIC_CACHE = "public, max-age=3600, stale-while-revalidate=86400"
+
+
+def _set_static_cache(response: Response) -> None:
+    response.headers["Cache-Control"] = _STATIC_CACHE
+    # Cache `public` + CORS dinámico por Origin: sin Vary: Origin, un proxy
+    # compartido podría servir respuestas con el ACAO equivocado a otro
+    # origen. GZipMiddleware ya appendea Accept-Encoding después.
+    response.headers["Vary"] = "Origin"
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -105,7 +122,8 @@ def health() -> HealthResponse:
 
 
 @app.get("/carreras", response_model=list[Carrera])
-def list_carreras() -> list[Carrera]:
+def list_carreras(response: Response) -> list[Carrera]:
+    _set_static_cache(response)
     # `sedes` se computa desde `cursos.sede` para que el FE filtre el panel
     # de sedes y el dropdown por materia a sólo las que existen en la carrera.
     sql = """
@@ -131,9 +149,11 @@ def list_carreras() -> list[Carrera]:
 
 @app.get("/materias", response_model=list[MateriaListItem])
 def list_materias(
+    response: Response,
     q: str | None = Query(None, description="Filtrar por nombre (case-insensitive)"),
     carrera: str | None = Query(None, description="Slug de carrera"),
 ) -> list[MateriaListItem]:
+    _set_static_cache(response)
     sql = """
         SELECT m.codigo, m.nombre, COUNT(c.id) AS cant_catedras
           FROM materias m
@@ -153,7 +173,8 @@ def list_materias(
 
 
 @app.get("/materias/{codigo}", response_model=MateriaDetail)
-def get_materia(codigo: int) -> MateriaDetail:
+def get_materia(codigo: int, response: Response) -> MateriaDetail:
+    _set_static_cache(response)
     with pool.connection() as conn:
         materia = conn.execute(
             "SELECT codigo, nombre FROM materias WHERE codigo = %s",
@@ -178,10 +199,11 @@ def get_materia(codigo: int) -> MateriaDetail:
 
 
 @app.get("/materias/{codigo}/opciones", response_model=MateriaOpciones)
-def get_materia_opciones(codigo: int) -> MateriaOpciones:
+def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
     """Devuelve la materia con sus cátedras y, para cada una, los profesores
     únicos que dictan comisiones (datos necesarios para que el FE permita
     elegir cátedra y filtrar por profesores antes de armar planes)."""
+    _set_static_cache(response)
     with pool.connection() as conn:
         materia = conn.execute(
             "SELECT codigo, nombre FROM materias WHERE codigo = %s",
@@ -222,7 +244,8 @@ def get_materia_opciones(codigo: int) -> MateriaOpciones:
 
 
 @app.get("/catedras/{catedra_id}", response_model=CatedraDetail)
-def get_catedra(catedra_id: int) -> CatedraDetail:
+def get_catedra(catedra_id: int, response: Response) -> CatedraDetail:
+    _set_static_cache(response)
     with pool.connection() as conn:
         catedra = conn.execute(
             """
@@ -261,6 +284,7 @@ def get_catedra(catedra_id: int) -> CatedraDetail:
 
 @app.get("/cursos", response_model=list[CursoListItem])
 def search_cursos(
+    response: Response,
     materia_codigo: int | None = Query(None, description="Filtrar por código de materia"),
     catedra_id: int | None = Query(None, description="Filtrar por id de cátedra"),
     tipo: Literal["teorico", "seminario", "comision"] | None = None,
@@ -274,6 +298,7 @@ def search_cursos(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> list[CursoListItem]:
+    _set_static_cache(response)
     sql = """
         SELECT cu.id, cu.catedra_id, cu.tipo::text, cu.codigo, cu.dia,
                cu.hora_inicio, cu.hora_fin, cu.profesor, cu.vacantes,
