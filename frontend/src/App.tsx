@@ -4,6 +4,7 @@ import { Favoritos } from "./pages/Favoritos";
 import { PlanesEstudio } from "./pages/PlanesEstudio";
 import { PaywallProvider } from "./components/PaywallProvider";
 import { CareerProvider } from "./components/CareerProvider";
+import { Footer } from "./components/Footer";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/pago-exitoso" element={<Home />} />
           <Route path="/pago-error" element={<Home />} />
         </Routes>
+        <Footer />
       </CareerProvider>
     </PaywallProvider>
   );
