@@ -48,7 +48,7 @@ API en **Render** (Docker, mismo `Dockerfile`). DB en **Neon** Postgres (`DATABA
 | GET | `/materias/{codigo}/opciones` | — | Materia + cátedras + profesores únicos. Lo consume `MateriaCard.tsx`. |
 | GET | `/catedras/{id}` | — | Cátedra + todos sus cursos con `obliga_a` resuelto. |
 | GET | `/cursos?...&incluir_obliga=` | — | Búsqueda flexible. |
-| POST | `/planes` | `optional_user` | Si el usuario es Pro, aplica filtros completos y cap 100. Si no, anula filtros y capea a 10. |
+| POST | `/planes` | `optional_user` | Si el usuario es Pro, aplica filtros completos y cap 100. Si no, anula filtros y capea a 15. |
 | GET | `/me/subscription` | `current_user` | Estado de suscripción del usuario. |
 | POST | `/pagos/checkout` | `current_user` | Crea preferencia de MP, devuelve `init_point`. |
 | GET | `/pagos/{external_reference}/status` | — | Polling público de status (idempotente). |

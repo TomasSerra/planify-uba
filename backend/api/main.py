@@ -381,7 +381,7 @@ def post_planes(
                     "usarlos."
                 ),
             )
-        max_allowed = 100 if is_paid else 30
+        max_allowed = 100 if is_paid else 15
         if req.max_planes > max_allowed:
             req.max_planes = max_allowed
         return armar_planes(conn, req)

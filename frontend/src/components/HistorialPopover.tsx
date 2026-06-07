@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
-import { Clock, Trash2 } from "lucide-react";
+import { Clock, Gem, Trash2 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { loadHistory, removeHistory } from "@/lib/planHistory";
+import {
+  entryUsesProFilters,
+  loadHistory,
+  removeHistory,
+} from "@/lib/planHistory";
+import { useAuth } from "@/lib/useAuth";
+import { useSubscription } from "@/lib/useSubscription";
 import type { PlanHistoryEntry } from "@/lib/types";
 
 function formatRelative(ts: number): string {
@@ -28,12 +34,15 @@ export function HistorialPopover({
 }: {
   onRestore: (entry: PlanHistoryEntry) => void;
 }) {
+  const { user } = useAuth();
+  const { isPaid } = useSubscription();
+  const uid = user?.uid ?? null;
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<PlanHistoryEntry[]>([]);
 
   useEffect(() => {
-    if (open) setEntries(loadHistory());
-  }, [open]);
+    if (open) setEntries(loadHistory(uid));
+  }, [open, uid]);
 
   function handleRestore(entry: PlanHistoryEntry) {
     onRestore(entry);
@@ -42,7 +51,7 @@ export function HistorialPopover({
 
   function handleRemove(e: React.MouseEvent, id: string) {
     e.stopPropagation();
-    setEntries(removeHistory(id));
+    setEntries(removeHistory(uid, id));
   }
 
   return (
@@ -72,6 +81,7 @@ export function HistorialPopover({
               const nombres = entry.filters.materias
                 .map((m) => m.nombre)
                 .join(", ");
+              const proLocked = !isPaid && entryUsesProFilters(entry);
               return (
                 <li
                   key={entry.id}
@@ -93,6 +103,12 @@ export function HistorialPopover({
                     <p className="mt-0.5 truncate text-xs text-foreground">
                       {nombres || "Sin materias"}
                     </p>
+                    {proLocked && (
+                      <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#EC990B]/10 px-2 py-0.5 text-[10px] font-medium text-[#EC990B]">
+                        <Gem className="size-3" />
+                        Usaba filtros Pro
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"

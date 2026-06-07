@@ -180,7 +180,7 @@ export function Favoritos() {
       const token = await getAccessTokenSilently();
       return api.listFavoritos(token);
     },
-    enabled: isAuthenticated && isPaid,
+    enabled: isAuthenticated,
   });
 
   async function confirmarEliminar() {
@@ -239,31 +239,14 @@ export function Favoritos() {
           </Card>
         )}
 
-        {!subLoading && isAuthenticated && !isPaid && (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-4 py-12 text-center text-sm text-muted-foreground">
-              <p>
-                Para empezar a guardar planes tenés que ser Pro.
-              </p>
-              <Button
-                onClick={() => openPaywall("favoritos")}
-                className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-              >
-                <Gem className="size-4" />
-                Hacete Pro
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {isPaid && isLoading && (
+        {isAuthenticated && isLoading && (
           <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
             <Loader2 className="mr-2 size-4 animate-spin" />
             Cargando…
           </div>
         )}
 
-        {isPaid && error && (
+        {isAuthenticated && error && (
           <Card>
             <CardContent className="py-12 text-center text-sm text-destructive">
               {(error as Error).message}
@@ -271,7 +254,26 @@ export function Favoritos() {
           </Card>
         )}
 
-        {isPaid && data && data.favorites.length === 0 && (
+        {isAuthenticated &&
+          !isLoading &&
+          !subLoading &&
+          !isPaid &&
+          data?.favorites.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-4 py-12 text-center text-sm text-muted-foreground">
+                <p>Para empezar a guardar planes tenés que ser Pro.</p>
+                <Button
+                  onClick={() => openPaywall("favoritos")}
+                  className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+                >
+                  <Gem className="size-4" />
+                  Hacete Pro
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+        {isAuthenticated && isPaid && data && data.favorites.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center text-sm text-muted-foreground">
               <Heart className="mx-auto mb-3 size-8 text-muted-foreground/50" />
@@ -281,7 +283,17 @@ export function Favoritos() {
           </Card>
         )}
 
-        {isPaid &&
+        {isAuthenticated && data && data.favorites.length > 0 && !isPaid && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <p>
+              Tu suscripción Pro no está activa. Podés seguir viendo y
+              eliminando los planes que guardaste, pero para agregar nuevos
+              tenés que ser Pro.
+            </p>
+          </div>
+        )}
+
+        {isAuthenticated &&
           data?.favorites.map((fav) => (
             <FavoritoCard
               key={fav.id}

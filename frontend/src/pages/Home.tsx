@@ -34,9 +34,13 @@ import { Header } from "@/components/Header";
 import { HistorialPopover } from "@/components/HistorialPopover";
 import { FREE_MAX_PLANES, PRO_MAX_PLANES } from "@/components/PaywallProvider";
 import { api } from "@/lib/api";
-import { pushHistory } from "@/lib/planHistory";
+import {
+  pushHistory,
+  entryUsesProFilters,
+  seleccionUsesProFilters,
+} from "@/lib/planHistory";
 import { useSubscription } from "@/lib/useSubscription";
-import { markProActive } from "@/lib/useMe";
+import { markProActive, meQueryKey } from "@/lib/useMe";
 import { useCareer } from "@/lib/career";
 import { usePaywall } from "@/lib/paywall";
 import { useAlert } from "@/lib/alert";
@@ -350,9 +354,11 @@ function decodeUrlState(raw: string): UrlState | null {
 
 export function Home() {
   const { isPaid, isLoading: subLoading } = useSubscription();
-  const { isAuthenticated, getAccessTokenSilently } = useAuth();
+  const { user, isAuthenticated, getAccessTokenSilently } = useAuth();
   const showAlert = useAlert();
   const openPaywall = usePaywall();
+  const queryClient = useQueryClient();
+  const uid = user?.uid ?? null;
 
   // Si MP redirigió a /pago-error o /pago-exitoso, abrimos un dialog encima
   // de Home y limpiamos la URL para que reload no re-dispare el dialog.
@@ -409,26 +415,62 @@ export function Home() {
     if (!q) return;
     const decoded = decodeUrlState(q);
     if (!decoded) return;
+    // Si el usuario no es Pro pero la URL trae filtros Pro (compartida por un
+    // Pro o editada a mano), strippeamos los campos Pro y avisamos. Mantenemos
+    // dias_excluidos y solo_con_cupos que son free.
+    const proFiltersInUrl =
+      !isPaid &&
+      ((decoded.f && decoded.f.length > 0) ||
+        (decoded.s && decoded.s.length > 0) ||
+        decoded.b != null ||
+        decoded.m.some(
+          (x) => x.ca !== null || x.p !== null || (x.se ?? null) !== null
+        ));
+    const safeDecoded = proFiltersInUrl
+      ? {
+          ...decoded,
+          m: decoded.m.map((x) => ({ c: x.c, ca: null, p: null, se: null })),
+          f: [],
+          s: [],
+          b: null,
+        }
+      : decoded;
     (async () => {
       try {
         const all = await api.listMateriasCached();
         const byCodigo = new Map(all.map((m) => [m.codigo, m.nombre]));
-        const seleccion: SeleccionConNombre[] = decoded.m.map((x) => ({
+        const seleccion: SeleccionConNombre[] = safeDecoded.m.map((x) => ({
           codigo: x.c,
           catedra_id: x.ca,
           profesores: x.p,
           sede: x.se ?? null,
           nombre: byCodigo.get(x.c) ?? `Materia ${x.c}`,
         }));
-        const bache = decoded.b ?? null;
-        const sc = decoded.sc ?? false;
+        const bache = safeDecoded.b ?? null;
+        const sc = safeDecoded.sc ?? false;
         setMaterias(seleccion);
-        setDiasPermitidos(decoded.d);
-        setFranjas(decoded.f);
-        setSedesPermitidas(decoded.s);
+        setDiasPermitidos(safeDecoded.d);
+        setFranjas(safeDecoded.f);
+        setSedesPermitidas(safeDecoded.s);
         setMaxBacheHoras(bache);
         setSoloCupos(sc);
-        await runGenerate(seleccion, decoded.d, decoded.f, decoded.s, bache, sc);
+        if (proFiltersInUrl) {
+          showAlert({
+            variant: "info",
+            title: "Filtros Pro descartados",
+            message:
+              "Esta URL incluía filtros Pro (cátedra, profesores, franjas, sede o bache). " +
+              "Como no sos Pro, generamos sin esos filtros.",
+          });
+        }
+        await runGenerate(
+          seleccion,
+          safeDecoded.d,
+          safeDecoded.f,
+          safeDecoded.s,
+          bache,
+          sc
+        );
       } catch (e) {
         setError((e as Error).message);
       }
@@ -513,6 +555,18 @@ export function Home() {
 
   const sinCambios =
     lastGeneratedSignature !== null && currentSignature === lastGeneratedSignature;
+
+  // Si el form actual tiene filtros Pro y el usuario no es Pro, no dejamos
+  // disparar "Generar" — el backend rechazaría con 403 igual, pero acá lo
+  // anticipamos con un tooltip claro. Cubre el caso de restore-from-history
+  // con filtros Pro siendo user free.
+  const formUsesProFilters = seleccionUsesProFilters(
+    materias,
+    franjas,
+    sedesPermitidas,
+    maxBacheHoras
+  );
+  const proFiltersBlocked = !isPaid && !subLoading && formUsesProFilters;
 
   // Si el usuario se vuelve Pro mientras hay un resultado topeado al límite
   // Free en pantalla, regeneramos automáticamente con el cap nuevo (100).
@@ -600,7 +654,7 @@ export function Home() {
       };
       setLastGeneratedFilters(filtersSnapshot);
       if (data.planes.length > 0) {
-        pushHistory({
+        pushHistory(uid, {
           request: {
             materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
               codigo,
@@ -638,14 +692,18 @@ export function Home() {
     } catch (e) {
       const msg = (e as Error).message;
       if (msg.startsWith("403")) {
-        // Solo se llega acá bypasseando el FE (cualquier filtro Pro debería
-        // estar deshabilitado). Tratamos como intento de manipulación.
+        // Se llega acá si: (a) la sub venció mid-sesión y el FE todavía cree
+        // que es Pro, o (b) alguien intentó bypassear el gating del FE. En
+        // ambos casos re-consultamos /me para resincronizar el estado y
+        // mostramos un mensaje neutral.
+        queryClient.invalidateQueries({ queryKey: meQueryKey(user?.uid) });
         showAlert({
           variant: "warning",
-          title: "Acción bloqueada",
+          title: "Función Pro",
           message:
-            "Detectamos un intento de usar filtros Pro sin suscripción. " +
-            "Si querés desbloquear los filtros, hacete Pro.",
+            "Los filtros que estás usando son Pro. Si antes eras Pro y se te " +
+            "venció la suscripción, vas a verlo reflejado en la página en un " +
+            "momento. Para usar estos filtros, hacete Pro.",
         });
       } else {
         setError(msg);
@@ -683,6 +741,16 @@ export function Home() {
   }
 
   function restoreFromHistory(entry: PlanHistoryEntry) {
+    const usaPro = entryUsesProFilters(entry);
+    if (usaPro && !isPaid) {
+      showAlert({
+        variant: "warning",
+        title: "Plan con filtros Pro",
+        message:
+          "Este plan se generó cuando tenías Pro. Podés verlo, pero no " +
+          "podés regenerarlo sin Pro porque usa filtros bloqueados.",
+      });
+    }
     const seleccion: SeleccionConNombre[] = entry.filters.materias.map((m) => ({
       codigo: m.codigo,
       nombre: m.nombre,
@@ -857,16 +925,36 @@ export function Home() {
                 )}
                 <Button
                   size="lg"
-                  onClick={generar}
-                  disabled={loading || materias.length === 0 || diasPermitidos.length === 0 || sinCambios}
-                  className="bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
+                  onClick={proFiltersBlocked ? () => openPaywall("filtros") : generar}
+                  disabled={
+                    loading ||
+                    materias.length === 0 ||
+                    diasPermitidos.length === 0 ||
+                    sinCambios
+                  }
+                  title={
+                    proFiltersBlocked
+                      ? "El plan actual usa filtros Pro. Hacete Pro para generarlo."
+                      : undefined
+                  }
+                  className={
+                    proFiltersBlocked
+                      ? "bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+                      : "bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
+                  }
                 >
                   {loading ? (
                     <Loader2 className="size-4 animate-spin" />
+                  ) : proFiltersBlocked ? (
+                    <Gem className="size-4" />
                   ) : (
                     <Sparkles className="size-4" />
                   )}
-                  {loading ? "Generando..." : "Generar planes"}
+                  {loading
+                    ? "Generando..."
+                    : proFiltersBlocked
+                    ? "Hacete Pro para generar"
+                    : "Generar planes"}
                 </Button>
               </div>
             </div>

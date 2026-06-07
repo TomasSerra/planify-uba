@@ -3,9 +3,11 @@ import { api } from "./api";
 import { useAuth } from "./useAuth";
 import type { Me } from "./types";
 
-// Cache de `/me` (carrera + suscripción). staleTime: Infinity → sólo se
-// refresca vía `setQueryData` o `invalidateQueries` desde mutations (cambio de
-// carrera, pago acreditado).
+// Cache de `/me` (carrera + suscripción). Se refresca:
+//   - cada 60s si la query es activa,
+//   - al volver el foco a la pestaña (cubre sub vencida mid-sesión),
+//   - manualmente vía `invalidateQueries` (cambio de carrera, pago acreditado,
+//     o 403 del backend que sugiera que la sub ya no es válida).
 export function useMe() {
   const {
     user,
@@ -17,7 +19,8 @@ export function useMe() {
   return useQuery({
     queryKey: ["me", user?.uid],
     enabled: !authLoading && isAuthenticated,
-    staleTime: Infinity,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const token = await getAccessTokenSilently();
       return api.getMe(token);

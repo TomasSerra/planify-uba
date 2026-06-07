@@ -44,18 +44,14 @@ class FavoriteList(BaseModel):
     favorites: list[Favorite]
 
 
-def _require_pro(conn, user: AuthUser) -> None:
-    if not has_active_subscription(conn, user.id):
-        raise HTTPException(
-            status_code=403,
-            detail="Guardar planes en favoritos es una función Pro.",
-        )
+# Ver y borrar los propios favoritos no requiere Pro (un user que dejó de ser
+# Pro debería poder seguir viendo y limpiando lo que guardó). Solo crear nuevos
+# (POST) sigue siendo Pro.
 
 
 @router.get("", response_model=FavoriteList)
 def list_favorites(user: AuthUser = Depends(current_user)) -> FavoriteList:
     with pool.connection() as conn:
-        _require_pro(conn, user)
         rows = conn.execute(
             "SELECT id, plan_data, filters_data, created_at FROM favorite_plans "
             "WHERE clerk_user_id = %s ORDER BY created_at DESC",
@@ -82,7 +78,11 @@ def create_favorite(
     user: AuthUser = Depends(current_user),
 ) -> FavoriteCreateResponse:
     with pool.connection() as conn:
-        _require_pro(conn, user)
+        if not has_active_subscription(conn, user.id):
+            raise HTTPException(
+                status_code=403,
+                detail="Guardar planes en favoritos es una función Pro.",
+            )
         row = conn.execute(
             "INSERT INTO favorite_plans (clerk_user_id, plan_data, filters_data) "
             "VALUES (%s, %s, %s) RETURNING id, created_at",
@@ -102,7 +102,6 @@ def delete_favorite(
     user: AuthUser = Depends(current_user),
 ) -> dict:
     with pool.connection() as conn:
-        _require_pro(conn, user)
         deleted = conn.execute(
             "DELETE FROM favorite_plans WHERE id = %s AND clerk_user_id = %s",
             (favorite_id, user.id),

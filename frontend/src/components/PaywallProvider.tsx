@@ -33,7 +33,7 @@ import { PaywallContext, type PaywallReason } from "@/lib/paywall";
 const SUBSCRIPTION_PRICE_ARS = 3000;
 const SUBSCRIPTION_MONTHS = 3;
 
-export const FREE_MAX_PLANES = 30;
+export const FREE_MAX_PLANES = 15;
 export const PRO_MAX_PLANES = 100;
 
 const PRO_BENEFITS: { icon: LucideIcon; text: string }[] = [
