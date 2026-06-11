@@ -535,6 +535,56 @@ class TestMaxPlanes:
         assert len(resp.planes) == 3
         assert resp.total_generados >= 3
 
+    def test_round_robin_rota_materia_cambiante_con_4_materias(self, fake_conn):
+        # Regresión: con suficientes materias y cátedras, el enumerador debe
+        # producir un pool con variación en TODAS las materias para que el
+        # reorder round-robin alterne la materia que cambia entre planes
+        # consecutivos (no que siempre cambie la última).
+        # Caso del bug: con DFS lex el pool de 80 combos eran todos m0=0,
+        # entonces sólo m3 (última materia) cambiaba.
+        comisiones = []
+        materias_data = [
+            (1, 10, "lunes"),
+            (2, 20, "martes"),
+            (3, 30, "miercoles"),
+            (4, 40, "jueves"),
+        ]
+        # 5 cátedras por materia → 5^4 = 625 combos, target_pool=80 lejos
+        # del límite donde DFS lex llegaría a variar m0.
+        for mat_cod, cat_id, dia in materias_data:
+            for k in range(5):
+                comisiones.append(make_comision_row(
+                    comision_id=cat_id * 10 + k,
+                    materia_codigo=mat_cod,
+                    catedra_id=cat_id,
+                    dia=dia,
+                    hora_inicio=time(8 + k * 2, 0),
+                    hora_fin=time(9 + k * 2, 0),
+                ))
+        setup_planes_db(fake_conn, comisiones)
+        req = _req(
+            [MateriaSeleccionada(codigo=c) for c, _, _ in materias_data],
+            max_planes=8,
+        )
+        resp = armar_planes(fake_conn, req)
+
+        assert len(resp.planes) == 8
+
+        materias_que_cambian: set[int] = set()
+        for i in range(len(resp.planes) - 1):
+            p1, p2 = resp.planes[i], resp.planes[i + 1]
+            for idx, (a, b) in enumerate(zip(p1.opciones, p2.opciones)):
+                if a.cursos[0].id != b.cursos[0].id:
+                    materias_que_cambian.add(idx)
+
+        # En 8 planes consecutivos deberían variar al menos 3 de las 4
+        # materias. Con el bug, sólo cambiaba 1 (la última).
+        assert len(materias_que_cambian) >= 3, (
+            f"Solo cambian las materias {materias_que_cambian} en los 8 "
+            f"planes; se espera variación en ≥3 de las 4. Probable regresión "
+            f"en diversidad del pool del enumerador."
+        )
+
     def test_round_robin_varia_materias_en_los_primeros(self, fake_conn):
         # Garantía: los primeros N planes no solo cambian la última materia.
         comisiones = []

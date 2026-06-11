@@ -262,27 +262,6 @@ class TestEnumerarCombos:
         assert len(combos) == 1
         assert combos[0][0].cursos[0].id == 11
 
-    def test_poda_no_desciende_a_materias_siguientes_tras_solapa(self):
-        # m0 op0 solapa con única op de m1: el enumerador NO debe siquiera
-        # considerar las opciones de m2 para esa rama. Contamos intentos.
-        intentos: list[None] = []
-        m0 = [
-            OpcionMateria(materia_codigo=1, materia_nombre="M1", catedra_id=1,
-                          cursos=[_curso(id=10, dia="lunes", hi=(10, 0), hf=(12, 0))]),
-        ]
-        m1 = [
-            OpcionMateria(materia_codigo=2, materia_nombre="M2", catedra_id=2,
-                          cursos=[_curso(id=20, dia="lunes", hi=(10, 0), hf=(12, 0))]),
-        ]
-        m2 = [
-            OpcionMateria(materia_codigo=3, materia_nombre="M3", catedra_id=3,
-                          cursos=[_curso(id=30 + i, dia="martes", hi=(8 + i, 0), hf=(9 + i, 0))])
-            for i in range(5)
-        ]
-        list(_enumerar_combos([m0, m1, m2], on_attempt=lambda: intentos.append(None)))
-        # m0 op0 (1 intento) + m1 op0 (1 intento, solapa, backtrack). NUNCA llegamos a m2.
-        assert len(intentos) == 2
-
     def test_bache_descarta_combo_en_el_leaf(self):
         # Mismo día, 6 horas de gap entre cursos: sin cap → válido, con cap → descartado.
         m0 = [OpcionMateria(materia_codigo=1, materia_nombre="M1", catedra_id=1,

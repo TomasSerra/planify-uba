@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import time
+from itertools import combinations, product as iproduct
 from typing import Callable, Iterable, Iterator
 
 from pydantic import BaseModel, Field
@@ -200,39 +201,58 @@ def _reorder_round_robin(planes: list[Plan], num_materias: int) -> list[Plan]:
 def _enumerar_combos(
     opciones_validas: list[list[OpcionMateria]],
     max_bache_horas: float | None = None,
+    target_pool: int | None = None,
     on_attempt: Callable[[], None] | None = None,
 ) -> Iterator[tuple[OpcionMateria, ...]]:
-    """DFS con backtracking. Yields combos válidos (sin solapamiento horario;
-    respetando bache si vino seteado). Poda subárboles enteros apenas detecta
-    solapamiento parcial entre materias ya elegidas — memoria O(num_materias)
-    en vez de O(producto cartesiano).
+    """Enumera combos en orden de distancia de Hamming creciente desde el
+    origen (todos los índices = 0). Para cada distancia d, recorre los C(n, d)
+    subconjuntos de materias a variar × producto cartesiano de valores
+    no-cero para esas materias. Filtra solapamiento y bache.
 
-    `on_attempt` se invoca una vez por cada opción considerada en cualquier
-    nivel del backtracking (sirve para contar combos evaluados).
+    La iteración por distancia es clave: garantiza que en los primeros combos
+    yieldeados haya variación en TODAS las materias (no solo en las últimas
+    como pasaría con DFS lex), lo que permite que _reorder_round_robin
+    alterne la materia cambiante entre planes consecutivos.
+
+    Memoria O(num_materias) — sin set visited ni queue. Corta apenas
+    yieldeados target_pool combos válidos, y tiene un cap absoluto en combos
+    examinados como red de seguridad.
     """
     n = len(opciones_validas)
     if n == 0:
         return
-    elegidos: list[OpcionMateria] = []
-    cursos_acum: list[CursoEnPlan] = []
+    sizes = [len(o) for o in opciones_validas]
+    # max distancia útil = materias con más de una opción (las de tamaño 1
+    # nunca contribuyen una posición variable).
+    max_dist = sum(1 for s in sizes if s > 1)
+    yielded = 0
+    examined = 0
+    MAX_EXAMINED = 200_000
 
-    def rec() -> Iterator[tuple[OpcionMateria, ...]]:
-        i = len(elegidos)
-        if i == n:
-            if max_bache_horas is None or _plan_respeta_bache(cursos_acum, max_bache_horas):
-                yield tuple(elegidos)
-            return
-        for op in opciones_validas[i]:
-            if on_attempt is not None:
-                on_attempt()
-            elegidos.append(op)
-            cursos_acum.extend(op.cursos)
-            if not _hay_solapamiento(cursos_acum):
-                yield from rec()
-            elegidos.pop()
-            del cursos_acum[-len(op.cursos):]
-
-    yield from rec()
+    for dist in range(max_dist + 1):
+        for positions in combinations(range(n), dist):
+            ranges = [range(1, sizes[p]) for p in positions]
+            for vals in iproduct(*ranges):
+                examined += 1
+                if examined > MAX_EXAMINED:
+                    return
+                if on_attempt is not None:
+                    on_attempt()
+                indices = [0] * n
+                for p, v in zip(positions, vals):
+                    indices[p] = v
+                combo = tuple(opciones_validas[i][indices[i]] for i in range(n))
+                cursos = [c for op in combo for c in op.cursos]
+                if _hay_solapamiento(cursos):
+                    continue
+                if max_bache_horas is not None and not _plan_respeta_bache(
+                    cursos, max_bache_horas
+                ):
+                    continue
+                yield combo
+                yielded += 1
+                if target_pool is not None and yielded >= target_pool:
+                    return
 
 
 def _hay_solapamiento(cursos: Iterable[CursoEnPlan]) -> bool:
@@ -403,7 +423,10 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
         total += 1
 
     for combo in _enumerar_combos(
-        opciones_validas, max_bache_horas=req.max_bache_horas, on_attempt=_bump
+        opciones_validas,
+        max_bache_horas=req.max_bache_horas,
+        target_pool=pool_target,
+        on_attempt=_bump,
     ):
         planes.append(Plan(opciones=list(combo)))
         if len(planes) >= pool_target:
