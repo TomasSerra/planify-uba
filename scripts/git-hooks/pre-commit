@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pre-commit hook: corre la suite de tests del backend.
+# Si algún test falla, aborta el commit y lista cuáles fallaron.
+# Para saltearlo (no recomendado): git commit --no-verify
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT/backend"
+
+# Detección de pytest: priorizar el venv local si existe.
+if [ -x "$ROOT/backend/.venv/bin/pytest" ]; then
+    PYTEST="$ROOT/backend/.venv/bin/pytest"
+elif command -v pytest >/dev/null 2>&1; then
+    PYTEST="pytest"
+else
+    echo "⚠️  pytest no encontrado. Corré: make install-test-deps"
+    echo "   (o instalá pytest globalmente)."
+    exit 1
+fi
+
+echo "→ Corriendo tests del backend..."
+# -q: salida concisa; --no-header: sin banner pytest;
+# si falla, pytest ya imprime los nombres con FAILED y un resumen.
+if ! "$PYTEST" -q --no-header; then
+    echo ""
+    echo "✗ Commit abortado: hay tests fallando."
+    echo "  Detalle completo:    cd backend && pytest"
+    echo "  Skip (no recomend.): git commit --no-verify"
+    exit 1
+fi
+
+echo "✓ Tests OK"

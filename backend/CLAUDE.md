@@ -34,6 +34,14 @@ backend/
 - Conexión via `DATABASE_URL` (psycopg pool, abierto en el lifespan).
 - Auth: `firebase_admin.initialize_app()` lee `GOOGLE_APPLICATION_CREDENTIALS` (path al service-account JSON). En Docker está montado en `/run/secrets/firebase-sa.json`. En Render se sube como Secret File.
 
+## Tests
+
+- `make install-test-deps` crea un venv en `backend/.venv` e instala pytest + deps (una vez).
+- `make test` corre la suite en `backend/tests/`. Tests puros: sin Docker, sin DB real, sin red. Tarda <1s.
+- `make install-hooks` cablea el hook pre-commit que corre los tests antes de cada commit. Bloquea el commit si alguno falla y lista cuáles fueron.
+- Cobertura actual: algoritmo de planes (todos los filtros + combinaciones), paywall Pro (`/planes` y `_request_uses_filters`), auth (Firebase mockeado), firma HMAC del webhook de MP, suscripciones (`has_active_subscription`, `_record_payment`, renovaciones, idempotencia), favoritos (gating Pro y aislamiento entre usuarios).
+- DB mockeada con `FakeConn` en `backend/tests/conftest.py` (helpers `make_comision_row`, `make_obliga_row`, `setup_planes_db`). Firebase mockeado parcheando `_apps` antes del import + `monkeypatch` de `fb_auth.verify_id_token`.
+
 ## Hosting
 
 API en **Render** (Docker, mismo `Dockerfile`). DB en **Neon** Postgres (`DATABASE_URL` con `sslmode=require`). Secrets del API en Render: `DATABASE_URL`, `GOOGLE_APPLICATION_CREDENTIALS`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`, `APP_URL_BACKEND`.
@@ -85,6 +93,11 @@ Notas:
 - Idempotencia en scraper: cualquier fix debe seguir siendo seguro de re-correr (`make scrape`).
 - La columna `clerk_user_id` en `subscriptions` y `favorite_plans` se llama así por historia (se planeó usar Clerk). Hoy almacena el `uid` de Firebase. No renombrar — el cambio requeriría una migración y no aporta nada funcional.
 - Hot reload solo recoge cambios en `/app/api`. Cambios al scraper requieren re-build del container.
+- **Tests obligatorios**: toda función nueva del backend que (a) implemente lógica de negocio (no glue puro ni queries triviales), (b) afecte el paywall / suscripciones / pagos, o (c) agregue un filtro nuevo al generador de planes, **debe** venir con tests en `backend/tests/`. El hook pre-commit los corre antes de cada commit — si rompés algo o no testeás algo nuevo crítico, el commit no entra. En particular:
+  - **Nuevo filtro en `PlanRequest` / `MateriaSeleccionada`** → tests del filtro solo + tests de combinación con al menos otros 2 filtros existentes en `tests/test_planes_armar.py`. Si el filtro es feature Pro, también extender `_request_uses_filters` y agregar el campo a `tests/test_paywall.py`.
+  - **Cambio en `has_active_subscription` o `_record_payment`** → tests de las nuevas ramas en `tests/test_subs.py`.
+  - **Nuevo endpoint gateado por Pro** → tests de los 3 estados (anónimo, free, Pro) en el archivo de tests que corresponda.
+  - **Cambio en la firma HMAC del webhook MP** → extender `tests/test_pagos_signature.py`.
 
 ## Cambios típicos
 

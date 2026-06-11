@@ -1,6 +1,10 @@
-.PHONY: up down restart logs ps psql scrape reset help
+.PHONY: up down restart logs ps psql scrape reset test install-test-deps install-hooks help
 
 DC := docker compose
+VENV := backend/.venv
+PY := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+PYTEST := $(VENV)/bin/pytest
 
 # Comando único: levanta DB + API + Frontend; siembra la DB si está vacía.
 up:
@@ -42,13 +46,41 @@ reset:
 	$(DC) down -v
 	$(MAKE) up
 
+# Tests del backend: corren localmente con un venv en backend/.venv (no Docker).
+# `make install-test-deps` lo crea idempotentemente. Tests puros: sin DB real.
+install-test-deps:
+	@if [ ! -x $(PY) ]; then \
+		echo "→ Creando venv en $(VENV)..."; \
+		python3 -m venv $(VENV); \
+	fi
+	@$(PIP) install --quiet --upgrade pip
+	@$(PIP) install --quiet -r backend/requirements-dev.txt
+	@echo "✓ Dev deps instaladas en $(VENV)"
+
+test:
+	@if [ ! -x $(PYTEST) ]; then \
+		echo "⚠️  pytest no instalado. Corré primero: make install-test-deps"; \
+		exit 1; \
+	fi
+	cd backend && ../$(PYTEST)
+
+install-hooks:
+	@mkdir -p .git/hooks
+	@ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x scripts/git-hooks/pre-commit
+	@echo "✓ Hook pre-commit instalado."
+	@echo "  Saltearlo (no recomendado): git commit --no-verify"
+
 help:
 	@echo "Targets:"
-	@echo "  make up       - Levanta DB + API + Frontend; si la DB está vacía, la siembra"
-	@echo "  make down     - Apaga containers (preserva datos)"
-	@echo "  make restart  - down + up"
-	@echo "  make reset    - Borra datos y vuelve a levantar desde cero"
-	@echo "  make scrape   - Re-corre el scraper (idempotente)"
-	@echo "  make psql     - Abre psql contra la DB"
-	@echo "  make logs     - Sigue logs de API + Frontend"
-	@echo "  make ps       - Lista containers"
+	@echo "  make up                 - Levanta DB + API + Frontend; si la DB está vacía, la siembra"
+	@echo "  make down               - Apaga containers (preserva datos)"
+	@echo "  make restart            - down + up"
+	@echo "  make reset              - Borra datos y vuelve a levantar desde cero"
+	@echo "  make scrape             - Re-corre el scraper (idempotente)"
+	@echo "  make psql               - Abre psql contra la DB"
+	@echo "  make logs               - Sigue logs de API + Frontend"
+	@echo "  make ps                 - Lista containers"
+	@echo "  make install-test-deps  - Crea venv en backend/.venv e instala pytest + deps"
+	@echo "  make test               - Corre la suite de tests del backend (sin Docker)"
+	@echo "  make install-hooks      - Instala el hook pre-commit que corre tests antes de commitear"

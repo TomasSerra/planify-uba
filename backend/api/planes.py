@@ -7,9 +7,9 @@ donde cada opción es comisión + sus cursos obligados (teóricos/seminarios).
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from datetime import time
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 from pydantic import BaseModel, Field
 
@@ -197,32 +197,42 @@ def _reorder_round_robin(planes: list[Plan], num_materias: int) -> list[Plan]:
     return ordered
 
 
-def _enumerar_combos_balanced(
+def _enumerar_combos(
     opciones_validas: list[list[OpcionMateria]],
+    max_bache_horas: float | None = None,
+    on_attempt: Callable[[], None] | None = None,
 ) -> Iterator[tuple[OpcionMateria, ...]]:
-    """BFS sobre el grafo de combinaciones desde el origen (primera opción de
-    cada materia). Vecinos = combos que difieren en exactamente una posición.
-    A diferencia de itertools.product (que varía la última materia primero y
-    deja las primeras casi fijas), esto asegura que en los primeros combos
-    aparezcan variaciones de TODAS las materias."""
+    """DFS con backtracking. Yields combos válidos (sin solapamiento horario;
+    respetando bache si vino seteado). Poda subárboles enteros apenas detecta
+    solapamiento parcial entre materias ya elegidas — memoria O(num_materias)
+    en vez de O(producto cartesiano).
+
+    `on_attempt` se invoca una vez por cada opción considerada en cualquier
+    nivel del backtracking (sirve para contar combos evaluados).
+    """
     n = len(opciones_validas)
     if n == 0:
         return
-    sizes = [len(o) for o in opciones_validas]
-    origin = tuple([0] * n)
-    visited: set[tuple[int, ...]] = {origin}
-    queue: deque[tuple[int, ...]] = deque([origin])
-    while queue:
-        state = queue.popleft()
-        yield tuple(opciones_validas[i][state[i]] for i in range(n))
-        for i in range(n):
-            for v in range(sizes[i]):
-                if v == state[i]:
-                    continue
-                nxt = state[:i] + (v,) + state[i + 1 :]
-                if nxt not in visited:
-                    visited.add(nxt)
-                    queue.append(nxt)
+    elegidos: list[OpcionMateria] = []
+    cursos_acum: list[CursoEnPlan] = []
+
+    def rec() -> Iterator[tuple[OpcionMateria, ...]]:
+        i = len(elegidos)
+        if i == n:
+            if max_bache_horas is None or _plan_respeta_bache(cursos_acum, max_bache_horas):
+                yield tuple(elegidos)
+            return
+        for op in opciones_validas[i]:
+            if on_attempt is not None:
+                on_attempt()
+            elegidos.append(op)
+            cursos_acum.extend(op.cursos)
+            if not _hay_solapamiento(cursos_acum):
+                yield from rec()
+            elegidos.pop()
+            del cursos_acum[-len(op.cursos):]
+
+    yield from rec()
 
 
 def _hay_solapamiento(cursos: Iterable[CursoEnPlan]) -> bool:
@@ -387,15 +397,14 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
 
     planes: list[Plan] = []
     total = 0
-    for combo in _enumerar_combos_balanced(opciones_validas):
+
+    def _bump() -> None:
+        nonlocal total
         total += 1
-        cursos = [c for op in combo for c in op.cursos]
-        if _hay_solapamiento(cursos):
-            continue
-        if req.max_bache_horas is not None and not _plan_respeta_bache(
-            cursos, req.max_bache_horas
-        ):
-            continue
+
+    for combo in _enumerar_combos(
+        opciones_validas, max_bache_horas=req.max_bache_horas, on_attempt=_bump
+    ):
         planes.append(Plan(opciones=list(combo)))
         if len(planes) >= pool_target:
             break

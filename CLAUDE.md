@@ -91,7 +91,7 @@ Una "opción" para una materia = (comisión + sus obligas). Un "plan" = una opci
 - **Comments**: solo cuando el WHY no es obvio. Nada de docstrings largos ni explicar QUÉ hace el código.
 - **Sin features especulativas**: nada de error handling para casos imposibles, abstracciones para "futuros casos", flags de feature flag a menos que se pidan.
 - **Edits**: preferir editar archivos existentes a crear nuevos. No crear `.md` salvo que el usuario lo pida.
-- **Tests**: el repo no tiene suite de tests. Verificación se hace levantando el stack y probando en navegador.
+- **Tests**: el backend tiene suite en `backend/tests/` con hook pre-commit que bloquea commits con tests fallando. Setup: `make install-test-deps && make install-hooks`. Cualquier cambio en lógica crítica (planes, paywall Pro, auth, pagos) debe sumar/actualizar tests — detalle en [backend/CLAUDE.md](backend/CLAUDE.md#tests). El frontend todavía no tiene suite y se verifica en navegador.
 
 ## Archivos por dominio (más detalle en `backend/CLAUDE.md` y `frontend/CLAUDE.md`)
 
