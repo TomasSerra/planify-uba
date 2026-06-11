@@ -9,16 +9,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function CarreraSelector() {
   const { carrera, setCarrera } = useCareer();
   const [open, setOpen] = useState(false);
-  const { data: carreras } = useQuery({
+  const { data: carreras, isLoading } = useQuery({
     queryKey: ["carreras"],
     queryFn: () => api.listCarreras(),
   });
 
   const sel = carreras?.find((c) => c.slug === carrera);
+
+  if (isLoading || !carreras) {
+    return (
+      <div className="flex w-full flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          Carrera
+        </span>
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-1.5">

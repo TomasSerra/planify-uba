@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, BookOpen } from "lucide-react";
+import { Plus, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -148,16 +148,26 @@ export function MateriaSelector({ selected, onChange }: Props) {
         <PopoverAnchor asChild>
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <BookOpen className="size-4" />
+              {loading && selected.length === 0 ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <BookOpen className="size-4" />
+              )}
               <span>
-                {selected.length === 0
+                {loading && selected.length === 0
+                  ? "Cargando materias…"
+                  : selected.length === 0
                   ? "Ninguna materia seleccionada"
                   : `${selected.length} ${selected.length === 1 ? "materia" : "materias"}`}
               </span>
             </div>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Plus className="size-3.5" />
+              <Button variant="outline" size="sm" disabled={loading}>
+                {loading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Plus className="size-3.5" />
+                )}
                 Agregar materia
               </Button>
             </PopoverTrigger>
