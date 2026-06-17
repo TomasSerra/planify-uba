@@ -110,10 +110,10 @@ export const api = {
       { method: "POST", body: JSON.stringify(req) },
       token ?? undefined
     ),
-  postCheckout: (token: string) =>
+  postCheckout: (token: string, flow: "redirect" | "qr" = "redirect") =>
     request<CheckoutResponse>(
       "/pagos/checkout",
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ flow }) },
       token
     ),
   getPagoStatus: (externalReference: string) =>

@@ -4,16 +4,13 @@ import { useAuth } from "@/lib/useAuth";
 import { useSubscription } from "@/lib/useSubscription";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  Check,
   CheckCircle2,
-  Filter,
-  GraduationCap,
-  CalendarDays,
-  Heart,
+  Gem,
   Loader2,
   LogIn,
-  Gem,
-  QrCode,
-  type LucideIcon,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +25,7 @@ import { api, API_BASE } from "@/lib/api";
 import { useAlert } from "@/lib/alert";
 import { markProActive } from "@/lib/useMe";
 import { PaywallContext, type PaywallReason } from "@/lib/paywall";
+import { cn } from "@/lib/utils";
 
 // Mantener en sync con backend: SUBSCRIPTION_PRICE_ARS y SUBSCRIPTION_DAYS.
 const SUBSCRIPTION_PRICE_ARS = 3000;
@@ -36,47 +34,87 @@ const SUBSCRIPTION_MONTHS = 3;
 export const FREE_MAX_PLANES = 15;
 export const PRO_MAX_PLANES = 100;
 
-const PRO_BENEFITS: { icon: LucideIcon; text: string }[] = [
-  { icon: Filter, text: "Filtrá por días, franjas horarias y sedes" },
-  { icon: GraduationCap, text: "Elegí cátedra fija o profesores específicos" },
+// Filas de la comparación gratis vs pro. Reflejan lo que
+// `_request_uses_filters` (backend/api/main.py) gatea como Pro: días
+// excluidos + cupos son gratis; franjas/sedes/bache + cátedra/profes
+// + favoritos son Pro.
+// `free`/`pro` para la tabla: boolean → ✓/✗, string → valor literal.
+// `cardFreeText`/`cardProText` son overrides para el render de cards
+// (cuando el texto difiere por columna, e.g. "Hasta 15..." vs "Hasta 100...").
+const COMPARISON_ROWS: {
+  label: string;
+  free: boolean | string;
+  pro: boolean | string;
+  cardFreeText?: string;
+  cardProText?: string;
+}[] = [
   {
-    icon: CalendarDays,
-    text: `Generá hasta ${PRO_MAX_PLANES} planes (gratis: ${FREE_MAX_PLANES})`,
+    label: "Generador de planes sin solapamientos",
+    free: true,
+    pro: true,
   },
-  { icon: Heart, text: "Guardá tus combinaciones favoritas" },
+  {
+    label: "Planes por generación",
+    free: String(FREE_MAX_PLANES),
+    pro: String(PRO_MAX_PLANES),
+    cardFreeText: `Hasta ${FREE_MAX_PLANES} planes por generación`,
+    cardProText: `Hasta ${PRO_MAX_PLANES} planes por generación`,
+  },
+  {
+    label: "Filtros básicos: días y cupos disponibles",
+    free: true,
+    pro: true,
+  },
+  {
+    label: "Filtros avanzados: franjas horarias, sedes y bache máximo",
+    free: false,
+    pro: true,
+  },
+  {
+    label: "Elegir cátedra fija o profesores",
+    free: false,
+    pro: true,
+  },
+  {
+    label: "Guardar planes favoritos",
+    free: false,
+    pro: true,
+  },
 ];
 
-const PAYWALL_COPY: Record<PaywallReason, { title: string; description: string }> = {
+const PAYWALL_COPY: Record<
+  PaywallReason,
+  { title: string; description: string }
+> = {
   catedra: {
     title: "Elegí tu cátedra con Pro",
-    description:
-      "Seleccionar una cátedra específica es una función Pro. Suscribite y desbloqueá ésta y todas las funciones avanzadas.",
+    description: "Fijar la cátedra de una materia es Pro.",
   },
   profesores: {
-    title: "Filtrá por profesores con Pro",
-    description:
-      "Elegir profesores específicos es una función Pro. Suscribite y desbloqueá ésta y todas las funciones avanzadas.",
+    title: "Elegí tus profesores con Pro",
+    description: "Filtrar por profesores específicos es Pro.",
   },
   filtros: {
-    title: "Filtros avanzados con Pro",
-    description:
-      "Filtrar por días, franjas horarias y sedes es una función Pro. Suscribite y desbloqueá éstas y todas las funciones avanzadas.",
+    title: "Más filtros con Pro",
+    description: "Filtrar por franjas horarias, sedes y bache máximo es Pro.",
   },
   favoritos: {
     title: "Guardá tus planes con Pro",
-    description:
-      "Guardar combinaciones en favoritos es una función Pro. Suscribite y desbloqueá ésta y todas las funciones avanzadas.",
+    description: "Guardar planes favoritos es Pro.",
   },
   "planes-limit": {
     title: "Más planes con Pro",
-    description: `En gratis generás hasta ${FREE_MAX_PLANES} planes. Hacete Pro y generá hasta ${PRO_MAX_PLANES}.`,
+    description: `Con gratis generás hasta ${FREE_MAX_PLANES} planes por generación.`,
   },
   general: {
-    title: "Hacete Pro",
-    description:
-      "Desbloqueá todas las funciones para armar tu cursada sin límites.",
+    title: "Armá tu cuatri sin límites",
+    description: "Pasate a Pro.",
   },
 };
+
+const formattedPrice = new Intl.NumberFormat("es-AR").format(
+  SUBSCRIPTION_PRICE_ARS,
+);
 
 function PaywallDialog({
   open,
@@ -89,21 +127,358 @@ function PaywallDialog({
 }) {
   const { getAccessTokenSilently, isAuthenticated, openLogin } = useAuth();
   const { isPaid, isLoading: subLoading } = useSubscription();
+  const showAlert = useAlert();
+  const [showPayment, setShowPayment] = useState(false);
+  const [mobileRedirectLoading, setMobileRedirectLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setShowPayment(false);
+      setMobileRedirectLoading(false);
+    }
+  }, [open]);
+
+  async function handleHaceteProClick() {
+    if (!isAuthenticated) {
+      openLogin("signin");
+      return;
+    }
+    if (isPaid) return;
+
+    // En mobile saltamos el modal de método de pago (no tiene QR útil) y
+    // mandamos directo al checkout de MP. En desktop abrimos el modal con
+    // QR + botón web.
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+    if (isDesktop) {
+      setShowPayment(true);
+      return;
+    }
+
+    setMobileRedirectLoading(true);
+    try {
+      const token = await getAccessTokenSilently();
+      const { init_point } = await api.postCheckout(token, "redirect");
+      window.location.href = init_point;
+    } catch (e) {
+      setMobileRedirectLoading(false);
+      showAlert({
+        variant: "error",
+        title: "No se pudo iniciar el pago",
+        message: (e as Error).message,
+      });
+    }
+  }
+
+  const { title, description } = PAYWALL_COPY[reason ?? "general"];
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className={cn(
+            // Fullscreen scrolleable en mobile: el comparativo + tarjetas no
+            // entra en un dialog centrado y el contenido fuera de viewport
+            // queda inaccesible (Radix Dialog no agrega scroll). En desktop
+            // volvemos al modal centrado con max-w-3xl.
+            "left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none border-0",
+            "md:left-[50%] md:top-[50%] md:h-auto md:max-h-[90vh] md:w-[calc(100vw-2rem)] md:max-w-2xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl md:border"
+          )}
+        >
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="flex items-center justify-center gap-2 text-center">
+              <Gem className="size-5 text-[#EC990B]" />
+              {title}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {description}
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const ctaButton = !isAuthenticated ? (
+              <Button
+                size="lg"
+                className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+                onClick={() => openLogin("signin")}
+              >
+                <LogIn className="size-4" />
+                Iniciar sesión
+              </Button>
+            ) : subLoading ? (
+              <div className="flex items-center justify-center py-3">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : isPaid ? (
+              <div className="flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                <CheckCircle2 className="size-4" />
+                Ya tenés Pro activo
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+                onClick={handleHaceteProClick}
+                disabled={mobileRedirectLoading}
+              >
+                {mobileRedirectLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <img src={mpIcon} alt="" className="h-4 w-auto" />
+                )}
+                Hacete Pro
+              </Button>
+            );
+
+            return (
+              <div className="flex flex-col gap-4">
+                <ComparisonTable />
+                {ctaButton}
+              </div>
+            );
+          })()}
+
+          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+            <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+            Pago único. No es una suscripción automática.
+          </p>
+        </DialogContent>
+      </Dialog>
+
+      <PaymentMethodDialog
+        open={open && showPayment}
+        onClose={() => setShowPayment(false)}
+        onPaid={() => {
+          setShowPayment(false);
+          setTimeout(() => onOpenChange(false), 1500);
+        }}
+      />
+    </>
+  );
+}
+
+// Layout alternativo de desktop (dos cards lado a lado en vez de tabla).
+// Lo dejamos guardado por si querés volver a esta presentación: en el
+// PaywallDialog cambiá el render del cuerpo a `<PaywallCardsLayout ... />`.
+export function PaywallCardsLayout({
+  ctaButton,
+  isPaid,
+}: {
+  ctaButton: ReactNode;
+  isPaid: boolean;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <PlanCard kind="free" isPaid={isPaid} />
+      <PlanCard kind="pro" isPaid={isPaid} cta={ctaButton} />
+    </div>
+  );
+}
+
+function PlanCard({
+  kind,
+  isPaid,
+  cta,
+}: {
+  kind: "free" | "pro";
+  isPaid: boolean;
+  cta?: ReactNode;
+}) {
+  const isPro = kind === "pro";
+  const showRecommended = isPro && !isPaid;
+
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col gap-3 rounded-2xl border p-4",
+        isPro ? "border-[#EC990B]/40 bg-[#EC990B]/5" : "border-border bg-white",
+      )}
+    >
+      {showRecommended && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#EC990B] px-3 py-0.5 text-xs font-semibold text-white shadow-sm">
+          Recomendado
+        </span>
+      )}
+      <div className="flex flex-col gap-1">
+        <h3 className="flex items-center gap-1.5 text-base font-semibold">
+          {isPro && <Gem className="size-4 text-[#EC990B]" />}
+          {isPro ? "Pro" : "Gratis"}
+        </h3>
+        {isPro ? (
+          <>
+            <p className="text-2xl font-bold">
+              ${formattedPrice}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                / {SUBSCRIPTION_MONTHS} meses
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground">Pago único</p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-bold">$0</p>
+            <p className="text-xs text-muted-foreground">
+              {isPaid ? "Plan anterior" : "Lo que tenés ahora"}
+            </p>
+          </>
+        )}
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {COMPARISON_ROWS.map((row) => {
+          const text = isPro
+            ? (row.cardProText ?? row.label)
+            : (row.cardFreeText ?? row.label);
+          const enabled = isPro ? row.pro !== false : row.free !== false;
+          return (
+            <li
+              key={text + (isPro ? ":pro" : ":free")}
+              className="flex items-start gap-2 text-sm"
+            >
+              {enabled ? (
+                <Check
+                  className={cn(
+                    "mt-0.5 size-4 shrink-0",
+                    isPro ? "text-[#EC990B]" : "text-emerald-600",
+                  )}
+                  strokeWidth={2.5}
+                />
+              ) : (
+                <X
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground/60"
+                  strokeWidth={2.5}
+                />
+              )}
+              <span
+                className={cn(
+                  "leading-snug",
+                  enabled ? "" : "text-muted-foreground/70",
+                )}
+              >
+                {text}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      {isPro ? (
+        cta
+      ) : (
+        <div className="rounded-md border border-dashed px-3 py-2 text-center text-sm font-medium text-muted-foreground">
+          {isPaid ? "Plan anterior" : "Tu plan actual"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComparisonCell({ value, isPro }: { value: boolean | string; isPro: boolean }) {
+  if (typeof value === "string") {
+    return (
+      <span
+        className={cn(
+          "text-sm font-semibold",
+          isPro ? "text-[#EC990B]" : "text-foreground",
+        )}
+      >
+        {value}
+      </span>
+    );
+  }
+  return value ? (
+    <Check
+      className={cn(
+        "mx-auto size-5",
+        isPro ? "text-[#EC990B]" : "text-emerald-600",
+      )}
+      strokeWidth={2.5}
+    />
+  ) : (
+    <X
+      className="mx-auto size-5 text-muted-foreground/60"
+      strokeWidth={2.5}
+    />
+  );
+}
+
+function ComparisonTable() {
+  return (
+    <div className="overflow-hidden rounded-xl border">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b">
+            <th className="px-3 py-3 text-left font-medium text-muted-foreground">
+              Función
+            </th>
+            <th className="w-[20%] px-2 py-3 text-center align-top">
+              <div className="font-semibold">Gratis</div>
+              <div className="text-sm font-bold">$0</div>
+            </th>
+            <th className="w-[30%] bg-[#EC990B]/10 px-2 py-3 text-center align-top">
+              <div className="flex items-center justify-center gap-1 font-semibold text-[#EC990B]">
+                <Gem className="size-3.5" />
+                Pro
+              </div>
+              <div>
+                <span className="text-sm font-bold text-[#EC990B]">
+                  ${formattedPrice}
+                </span>
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  / {SUBSCRIPTION_MONTHS} meses
+                </span>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {COMPARISON_ROWS.map((row) => (
+            <tr key={row.label} className="border-b last:border-b-0">
+              <td className="px-3 py-3 leading-snug">{row.label}</td>
+              <td className="px-2 py-3 text-center">
+                <ComparisonCell value={row.free} isPro={false} />
+              </td>
+              <td className="bg-[#EC990B]/5 px-2 py-3 text-center">
+                <ComparisonCell value={row.pro} isPro={true} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PaymentMethodDialog({
+  open,
+  onClose,
+  onPaid,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPaid: () => void;
+}) {
+  const { getAccessTokenSilently, openLogin } = useAuth();
   const queryClient = useQueryClient();
   const showAlert = useAlert();
-  const [initPoint, setInitPoint] = useState<string | null>(null);
-  const [externalReference, setExternalReference] = useState<string | null>(null);
-  const [loadingFor, setLoadingFor] = useState<"redirect" | "qr" | null>(null);
-  const [showQR, setShowQR] = useState(false);
+  const [redirectInitPoint, setRedirectInitPoint] = useState<string | null>(
+    null,
+  );
+  const [qrExternalReference, setQrExternalReference] = useState<string | null>(
+    null,
+  );
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [redirectLoading, setRedirectLoading] = useState(false);
+  const qrInFlightRef = useRef(false);
   const redirectStartedAtRef = useRef<number | null>(null);
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setInitPoint(null);
-      setExternalReference(null);
-      setShowQR(false);
-      setLoadingFor(null);
+      setRedirectInitPoint(null);
+      setQrExternalReference(null);
+      setQrError(null);
+      setRedirectLoading(false);
+      qrInFlightRef.current = false;
       redirectStartedAtRef.current = null;
       if (safetyTimeoutRef.current !== null) {
         clearTimeout(safetyTimeoutRef.current);
@@ -112,30 +487,57 @@ function PaywallDialog({
     }
   }, [open]);
 
-  // Polling de status mientras el QR está visible: cuando MP acredita el pago
-  // (escaneado desde el celu), invalidamos useSubscription y cerramos.
+  // El in-flight guard va en un ref (no state): si fuera state, setear
+  // qrLoading=true re-dispararía este mismo effect, lo que correría el cleanup
+  // y marcaría la promesa como cancelada antes de que vuelva con la respuesta.
+  useEffect(() => {
+    if (!open) return;
+    if (qrExternalReference || qrInFlightRef.current) return;
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+    if (!isDesktop) return;
+
+    let cancelled = false;
+    qrInFlightRef.current = true;
+    setQrError(null);
+    (async () => {
+      try {
+        const token = await getAccessTokenSilently();
+        const { external_reference } = await api.postCheckout(token, "qr");
+        if (cancelled) return;
+        setQrExternalReference(external_reference);
+      } catch (e) {
+        if (!cancelled) setQrError((e as Error).message);
+      } finally {
+        qrInFlightRef.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, qrExternalReference, getAccessTokenSilently]);
+
   const { data: qrPagoStatus } = useQuery({
-    queryKey: ["pago-status", externalReference],
+    queryKey: ["pago-status", qrExternalReference],
     queryFn: () => {
-      if (!externalReference) throw new Error("Falta external_reference");
-      return api.getPagoStatus(externalReference);
+      if (!qrExternalReference) throw new Error("Falta external_reference");
+      return api.getPagoStatus(qrExternalReference);
     },
-    enabled: open && showQR && !!externalReference,
-    refetchInterval: (q) => (q.state.data?.status === "approved" ? false : 5000),
+    enabled: open && !!qrExternalReference,
+    refetchInterval: (q) =>
+      q.state.data?.status === "approved" ? false : 5000,
   });
 
   useEffect(() => {
     if (qrPagoStatus?.status !== "approved") return;
     markProActive(queryClient);
-    const t = setTimeout(() => onOpenChange(false), 1800);
+    const t = setTimeout(onPaid, 1500);
     return () => clearTimeout(t);
-  }, [qrPagoStatus?.status, queryClient, onOpenChange]);
+  }, [qrPagoStatus?.status, queryClient, onPaid]);
 
-  // Si el usuario va a MP (o abre el QR en otra tab) y vuelve sin pagar,
-  // el botón puede quedar en loading. visibilitychange + timeout de seguridad
-  // resetean el estado cuando la tab vuelve a estar visible.
+  // Si el user va a MP y vuelve sin pagar, el botón puede quedar en loading.
+  // visibilitychange + timeout de seguridad resetean cuando la tab vuelve.
   useEffect(() => {
-    if (loadingFor === null) {
+    if (!redirectLoading) {
       redirectStartedAtRef.current = null;
       if (safetyTimeoutRef.current !== null) {
         clearTimeout(safetyTimeoutRef.current);
@@ -144,13 +546,16 @@ function PaywallDialog({
       return;
     }
     redirectStartedAtRef.current = Date.now();
-    safetyTimeoutRef.current = setTimeout(() => setLoadingFor(null), 10_000);
+    safetyTimeoutRef.current = setTimeout(
+      () => setRedirectLoading(false),
+      10_000,
+    );
     function onVisibility() {
       if (document.visibilityState !== "visible") return;
       const started = redirectStartedAtRef.current;
       if (started === null) return;
       if (Date.now() - started < 800) return;
-      setLoadingFor(null);
+      setRedirectLoading(false);
     }
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
@@ -160,42 +565,25 @@ function PaywallDialog({
         safetyTimeoutRef.current = null;
       }
     };
-  }, [loadingFor]);
-
-  async function fetchInitPoint(): Promise<string | null> {
-    if (initPoint) return initPoint;
-    let token: string;
-    try {
-      token = await getAccessTokenSilently();
-    } catch {
-      openLogin("signin");
-      return null;
-    }
-    const { init_point, external_reference } = await api.postCheckout(token);
-    setInitPoint(init_point);
-    setExternalReference(external_reference);
-    return init_point;
-  }
-
-  function guardAlreadyPaid(): boolean {
-    if (!isPaid) return false;
-    showAlert({
-      variant: "info",
-      title: "Ya sos Pro",
-      message:
-        "Tu suscripción está activa — no hace falta pagar de nuevo. Recargá la página si no ves los beneficios desbloqueados.",
-    });
-    queryClient.invalidateQueries({ queryKey: ["me"] });
-    onOpenChange(false);
-    return true;
-  }
+  }, [redirectLoading]);
 
   async function pagar() {
-    if (guardAlreadyPaid()) return;
-    setLoadingFor("redirect");
+    setRedirectLoading(true);
     try {
-      const ip = await fetchInitPoint();
-      if (ip) window.location.href = ip;
+      let ip = redirectInitPoint;
+      if (!ip) {
+        let token: string;
+        try {
+          token = await getAccessTokenSilently();
+        } catch {
+          openLogin("signin");
+          return;
+        }
+        const { init_point } = await api.postCheckout(token, "redirect");
+        ip = init_point;
+        setRedirectInitPoint(ip);
+      }
+      window.location.href = ip;
     } catch (e) {
       showAlert({
         variant: "error",
@@ -203,150 +591,84 @@ function PaywallDialog({
         message: (e as Error).message,
       });
     } finally {
-      setLoadingFor(null);
+      setRedirectLoading(false);
     }
   }
 
-  async function togglePagoMobile() {
-    if (showQR) {
-      setShowQR(false);
-      return;
-    }
-    if (guardAlreadyPaid()) return;
-    setLoadingFor("qr");
-    try {
-      const ip = await fetchInitPoint();
-      if (ip) setShowQR(true);
-    } catch (e) {
-      showAlert({
-        variant: "error",
-        title: "No se pudo iniciar el pago",
-        message: (e as Error).message,
-      });
-    } finally {
-      setLoadingFor(null);
-    }
-  }
-
-  const formattedPrice = new Intl.NumberFormat("es-AR").format(
-    SUBSCRIPTION_PRICE_ARS
-  );
-
-  const { title, description } = PAYWALL_COPY[reason ?? "general"];
+  const approved = qrPagoStatus?.status === "approved";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gem className="size-5 text-[#EC990B]" />
-            {title}
+            Pagá desde tu celular
           </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>
+            Escaneá con la <strong>cámara del celular</strong>, no con la app de
+            Mercado Pago
+          </DialogDescription>
         </DialogHeader>
 
-        <ul className="space-y-3 py-2">
-          {PRO_BENEFITS.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-3">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#EC990B]/15 text-[#EC990B]">
-                <Icon className="size-4" strokeWidth={2.25} />
-              </span>
-              <span className="text-sm font-medium">{text}</span>
-            </li>
-          ))}
-        </ul>
-
-        {!isAuthenticated ? (
-          <Button
-            size="lg"
-            className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-            onClick={() => openLogin("signin")}
-          >
-            <LogIn className="size-4" />
-            Iniciar sesión
-          </Button>
-        ) : subLoading ? (
-          <div className="flex items-center justify-center py-3">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : isPaid ? (
-          <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <CheckCircle2 className="size-10 text-emerald-600" strokeWidth={1.5} />
-            <p className="text-sm font-medium">Ya tenés Pro activo</p>
-            <p className="text-xs text-muted-foreground">
-              No hace falta pagar de nuevo. Disfrutá los beneficios desbloqueados.
-            </p>
+        {approved ? (
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <CheckCircle2
+              className="size-12 text-emerald-600"
+              strokeWidth={1.5}
+            />
+            <p className="text-sm font-medium">¡Pago acreditado! Ya sos Pro</p>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-4">
+            <div className="hidden flex-col items-center gap-2 md:flex">
+              {qrError ? (
+                <p className="px-2 text-center text-xs text-destructive">
+                  No se pudo generar el QR: {qrError}
+                </p>
+              ) : qrExternalReference ? (
+                <div className="rounded-lg border bg-white p-3">
+                  <QRCodeSVG
+                    value={`${API_BASE}/pagos/qr/${qrExternalReference}`}
+                    size={160}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-[160px] w-[160px] items-center justify-center rounded-lg border bg-muted/30">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-0.5">
+              <p className="text-3xl font-bold">${formattedPrice}</p>
+              <p className="text-sm text-muted-foreground">
+                {SUBSCRIPTION_MONTHS} meses · Pago único
+              </p>
+            </div>
+
+            <div className="hidden items-center gap-3 md:flex">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                o
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
             <Button
               size="lg"
               className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
               onClick={pagar}
-              disabled={loadingFor !== null}
+              disabled={redirectLoading}
             >
-              {loadingFor === "redirect" ? (
+              {redirectLoading ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <img src={mpIcon} alt="" className="h-4 w-auto" />
               )}
-              Pagar ${formattedPrice} · {SUBSCRIPTION_MONTHS} meses
+              Pagar con Mercado Pago
             </Button>
-            <p className="px-2 text-center text-xs text-muted-foreground">
-              Pago único por {SUBSCRIPTION_MONTHS} meses. No es una suscripción
-              automática.
-            </p>
-            <div className="hidden md:block">
-              <div className="my-2 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">O</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={togglePagoMobile}
-                disabled={loadingFor !== null}
-              >
-                {loadingFor === "qr" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <QrCode className="size-4" />
-                )}
-                Pagar desde tu celular
-              </Button>
-              {showQR && externalReference && (
-                <div className="flex flex-col items-center gap-2 pt-3">
-                  {qrPagoStatus?.status === "approved" ? (
-                    <>
-                      <CheckCircle2
-                        className="size-10 text-emerald-600"
-                        strokeWidth={1.5}
-                      />
-                      <p className="text-sm font-medium">
-                        ¡Pago acreditado! Ya sos Pro.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="rounded-lg border bg-white p-3">
-                        <QRCodeSVG
-                          value={`${API_BASE}/pagos/qr/${externalReference}`}
-                          size={160}
-                        />
-                      </div>
-                      <p className="px-2 text-center text-xs text-muted-foreground">
-                        Escaneá con la <strong>cámara del celular</strong>, no
-                        con la app de Mercado Pago. Cuando MP confirme, esta
-                        ventana se actualiza sola.
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

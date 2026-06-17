@@ -48,8 +48,20 @@ class CheckoutResponse(BaseModel):
     external_reference: str
 
 
+class CheckoutRequest(BaseModel):
+    # "redirect" = pago desde compu, auto_return aprobado → MP redirige al sitio.
+    # "qr" = pago escaneando QR desde el celu, sin auto_return → MP se queda en
+    # la pantalla de comprobante y no manda al user de vuelta (el desktop ya se
+    # entera del pago vía polling de /pagos/{ref}/status).
+    flow: Literal["redirect", "qr"] = "redirect"
+
+
 @router.post("/checkout", response_model=CheckoutResponse)
-def post_checkout(user: AuthUser = Depends(current_user)) -> CheckoutResponse:
+def post_checkout(
+    req: CheckoutRequest | None = None,
+    user: AuthUser = Depends(current_user),
+) -> CheckoutResponse:
+    flow = (req.flow if req else "redirect")
     external_reference = uuid.uuid4().hex
     body = {
         "items": [
@@ -67,10 +79,14 @@ def post_checkout(user: AuthUser = Depends(current_user)) -> CheckoutResponse:
             "failure": f"{APP_URL}/pago-error",
             "pending": f"{APP_URL}/pago-exitoso?ref={external_reference}",
         },
-        # En dev (APP_URL=http://localhost) MP rechaza la preference si pedimos
-        # auto_return — los back_urls deben ser HTTPS públicos. Solo lo pedimos
-        # si APP_URL es https.
-        **({"auto_return": "approved"} if APP_URL.startswith("https://") else {}),
+        # auto_return solo en flow=redirect (y solo si APP_URL es https; en dev
+        # MP rechaza la preference porque los back_urls no son públicos). En
+        # flow=qr lo omitimos a propósito: el celu se queda en MP tras pagar.
+        **(
+            {"auto_return": "approved"}
+            if flow == "redirect" and APP_URL.startswith("https://")
+            else {}
+        ),
         "notification_url": f"{APP_URL_BACKEND}/pagos/webhook",
     }
     res = _mp_client.post(
