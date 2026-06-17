@@ -66,7 +66,7 @@ def post_checkout(
     body = {
         "items": [
             {
-                "title": f"Acceso {SUBSCRIPTION_DAYS // 30} meses",
+                "title": f"Planify Pro - {SUBSCRIPTION_DAYS // 30} meses",
                 "quantity": 1,
                 "unit_price": SUBSCRIPTION_PRICE_ARS,
                 "currency_id": "ARS",

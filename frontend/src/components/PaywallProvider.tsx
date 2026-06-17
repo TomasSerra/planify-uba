@@ -108,7 +108,7 @@ const PAYWALL_COPY: Record<
   },
   general: {
     title: "Armá tu cuatri sin límites",
-    description: "Pasate a Pro.",
+    description: "Pasate a Pro por menos de lo que sale un café.",
   },
 };
 
@@ -216,7 +216,7 @@ function PaywallDialog({
             ) : (
               <Button
                 size="lg"
-                className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+                className="mx-auto w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90 md:max-w-xs"
                 onClick={handleHaceteProClick}
                 disabled={mobileRedirectLoading}
               >
@@ -225,7 +225,8 @@ function PaywallDialog({
                 ) : (
                   <img src={mpIcon} alt="" className="h-4 w-auto" />
                 )}
-                Hacete Pro
+                <span className="md:hidden">Pagar con Mercado Pago</span>
+                <span className="hidden md:inline">Hacete Pro</span>
               </Button>
             );
 
@@ -403,18 +404,16 @@ function ComparisonCell({ value, isPro }: { value: boolean | string; isPro: bool
 
 function ComparisonTable() {
   return (
-    <div className="overflow-hidden rounded-xl border">
-      <table className="w-full border-collapse text-sm">
+    <div className="rounded-xl border">
+      <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
-          <tr className="border-b">
-            <th className="px-3 py-3 text-left font-medium text-muted-foreground">
-              Función
-            </th>
-            <th className="w-[20%] px-2 py-3 text-center align-top">
+          <tr>
+            <th className="border-b px-3 py-3 text-left font-medium text-muted-foreground" />
+            <th className="border-b px-2 py-3 text-center align-top w-[20%]">
               <div className="font-semibold">Gratis</div>
-              <div className="text-sm font-bold">$0</div>
+              <div className="text-sm">$0</div>
             </th>
-            <th className="w-[30%] bg-[#EC990B]/10 px-2 py-3 text-center align-top">
+            <th className="w-[30%] rounded-t-xl border-x-2 border-t-2 border-[#EC990B] bg-[#EC990B]/10 px-2 py-3 text-center align-top">
               <div className="flex items-center justify-center gap-1 font-semibold text-[#EC990B]">
                 <Gem className="size-3.5" />
                 Pro
@@ -423,7 +422,7 @@ function ComparisonTable() {
                 <span className="text-sm font-bold text-[#EC990B]">
                   ${formattedPrice}
                 </span>
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                <span className="ml-1 block text-xs font-normal text-muted-foreground md:inline">
                   / {SUBSCRIPTION_MONTHS} meses
                 </span>
               </div>
@@ -431,17 +430,37 @@ function ComparisonTable() {
           </tr>
         </thead>
         <tbody>
-          {COMPARISON_ROWS.map((row) => (
-            <tr key={row.label} className="border-b last:border-b-0">
-              <td className="px-3 py-3 leading-snug">{row.label}</td>
-              <td className="px-2 py-3 text-center">
-                <ComparisonCell value={row.free} isPro={false} />
-              </td>
-              <td className="bg-[#EC990B]/5 px-2 py-3 text-center">
-                <ComparisonCell value={row.pro} isPro={true} />
-              </td>
-            </tr>
-          ))}
+          {COMPARISON_ROWS.map((row, idx) => {
+            const isLast = idx === COMPARISON_ROWS.length - 1;
+            return (
+              <tr key={row.label}>
+                <td
+                  className={cn(
+                    "px-3 py-3 leading-snug",
+                    !isLast && "border-b",
+                  )}
+                >
+                  {row.label}
+                </td>
+                <td
+                  className={cn(
+                    "px-2 py-3 text-center",
+                    !isLast && "border-b",
+                  )}
+                >
+                  <ComparisonCell value={row.free} isPro={false} />
+                </td>
+                <td
+                  className={cn(
+                    "border-x-2 border-[#EC990B] bg-[#EC990B]/5 px-2 py-3 text-center",
+                    isLast && "rounded-b-xl border-b-2",
+                  )}
+                >
+                  <ComparisonCell value={row.pro} isPro={true} />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -607,7 +626,7 @@ function PaymentMethodDialog({
           </DialogTitle>
           <DialogDescription>
             Escaneá con la <strong>cámara del celular</strong>, no con la app de
-            Mercado Pago
+            Mercado Pago. Serás redirigido a la app de Mercado Pago.
           </DialogDescription>
         </DialogHeader>
 
@@ -666,7 +685,7 @@ function PaymentMethodDialog({
               ) : (
                 <img src={mpIcon} alt="" className="h-4 w-auto" />
               )}
-              Pagar con Mercado Pago
+              Pagar desde la web
             </Button>
           </div>
         )}
