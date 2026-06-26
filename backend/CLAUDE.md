@@ -33,7 +33,7 @@ backend/
 
 - `uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/api`. El volumen `./backend/api:/app/api` permite hot reload sin rebuild.
 - Conexión via `DATABASE_URL` (psycopg pool, abierto en el lifespan).
-- Auth: `firebase_admin.initialize_app()` lee `GOOGLE_APPLICATION_CREDENTIALS` (path al service-account JSON). En Docker está montado en `/run/secrets/firebase-sa.json`. En Render se sube como Secret File.
+- Auth: `_initialize_firebase()` ([api/auth.py](api/auth.py)) intenta en orden: (1) `GOOGLE_APPLICATION_CREDENTIALS` como path a un JSON (dev local en Docker, montado en `/run/secrets/firebase-sa.json`); (2) `_credentials_from_env()`, que arma el service account desde envs sueltas `FIREBASE_PROJECT_ID` / `FIREBASE_PRIVATE_KEY` / `FIREBASE_CLIENT_EMAIL` (+ opcionales) — este es el camino en **Vercel**, que no tiene filesystem persistente; (3) ADC puro como fallback.
 
 ## Tests
 
@@ -43,9 +43,29 @@ backend/
 - Cobertura actual: algoritmo de planes (todos los filtros + combinaciones), paywall Pro (`/planes` y `_request_uses_filters`), auth (Firebase mockeado), firma HMAC del webhook de MP, suscripciones (`has_active_subscription`, `_record_payment`, renovaciones, idempotencia), favoritos (gating Pro y aislamiento entre usuarios).
 - DB mockeada con `FakeConn` en `backend/tests/conftest.py` (helpers `make_comision_row`, `make_obliga_row`, `setup_planes_db`). Firebase mockeado parcheando `_apps` antes del import + `monkeypatch` de `fb_auth.verify_id_token`.
 
+## Load testing (k6)
+
+Tests de carga en `backend/loadtest/` que le pegan a `POST /planes` **en producción** (es read-only y anónimo: no escribe datos ni toca Mercado Pago). Necesitan [k6](https://k6.io) instalado (`brew install k6`). Apuntan vía la env `API`; reparto fijo 80% planes de 3 materias / 20% de 4, y la mitad de cada grupo manda `solo_con_cupos` + excluir sábado (ambos filtros gratis, no gatean Pro — por eso corre todo sin token).
+
+```
+backend/loadtest/
+  config.js      helpers + métricas custom + generador de reporte (compartido)
+  realistic.js   50 usuarios escalonados en una ventana (~10-30s entre arribos)
+  burst.js       pico de N concurrentes (default 100) en 4 olas
+  reportes/      salidas (gitignored), con fecha en el nombre
+```
+
+| Comando | Qué hace |
+| --- | --- |
+| `API=https://planify-uni-api.vercel.app k6 run realistic.js` | Escenario realista. `VENTANA=60` achica la ventana de arribos (prueba rápida). |
+| `API=... k6 run burst.js` | Pico de concurrencia. `VUS=200` sube el pico. |
+| `API=... CARRERA=profesorado-psicologia k6 run realistic.js` | Otra carrera (default `licenciatura-psicologia`; ver `GET /carreras` para los slugs). |
+
+Cada corrida deja en `reportes/` un `<escenario>-<fecha>.html` (veredicto PASÓ/FALLÓ + por qué falló con desglose de errores por código, sección Resumen simple y Detalle completo) y el `.json` crudo. Lo que más vale mirar en vivo: el gráfico de *connections* en Neon y los logs de función en Vercel (504/timeouts). El cuello de botella esperable no es CPU sino conexiones a Neon y cold starts de Vercel.
+
 ## Hosting
 
-API en **Render** (Docker, mismo `Dockerfile`). DB en **Neon** Postgres (`DATABASE_URL` con `sslmode=require`). Secrets del API en Render: `DATABASE_URL`, `GOOGLE_APPLICATION_CREDENTIALS`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`, `APP_URL_BACKEND`.
+API en **Vercel** (Free) como FastAPI serverless ([docs](https://vercel.com/docs/frameworks/backend/fastapi)) — cada request es una invocación de función, no hay proceso uvicorn persistente. DB en **Neon** Postgres; `DATABASE_URL` debe apuntar al **endpoint pooled** (host con `-pooler`, PgBouncer) porque en serverless cada instancia abre su propio pool y las conexiones directas se agotan. Secrets del API en Vercel: `DATABASE_URL`, las `FIREBASE_*` (ver Auth), `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`, `APP_URL_BACKEND`. El `Dockerfile` quedó solo para dev local (Docker Compose); Vercel no lo usa.
 
 ## Endpoints
 

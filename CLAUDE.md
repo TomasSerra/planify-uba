@@ -22,8 +22,8 @@ Cubre las cuatro carreras de la Facultad de Psicología (UBA): Licenciatura en P
 | Servicio | Plataforma | Notas |
 | --- | --- | --- |
 | Frontend | **Vercel** | SPA. `vercel.json` reescribe a `/index.html`. Envs: `VITE_API_URL`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`. |
-| API | **Render** | Docker (mismo `backend/Dockerfile`). Service account de Firebase como Secret File en `/etc/secrets/firebase-sa.json`; `GOOGLE_APPLICATION_CREDENTIALS` apunta ahí. |
-| DB | **Neon** (Postgres) | `DATABASE_URL` (con `sslmode=require`) en envs del API. |
+| API | **Vercel** (Free) | FastAPI serverless ([docs](https://vercel.com/docs/frameworks/backend/fastapi)); cada request es una invocación de función. Service account de Firebase desde envs `FIREBASE_*` (no hay filesystem persistente). El `Dockerfile` quedó solo para dev local. |
+| DB | **Neon** (Postgres) | `DATABASE_URL` en envs del API. En Vercel debe ser el endpoint **pooled** (host con `-pooler`): en serverless cada instancia abre su pool y las conexiones directas se agotan. |
 | Auth | **Firebase** | Email/Password + Google habilitados. Authorized domains: `localhost`, dominio de Vercel. |
 | Scraper | **GitHub Actions** | Cron diario (06:00 UTC). Ver [.github/workflows/scrape.yml](.github/workflows/scrape.yml). Secret `DATABASE_URL` apunta a Neon. |
 
@@ -103,6 +103,7 @@ Una "opción" para una materia = (comisión + sus obligas). Un "plan" = una opci
 - **Sin features especulativas**: nada de error handling para casos imposibles, abstracciones para "futuros casos", flags de feature flag a menos que se pidan.
 - **Edits**: preferir editar archivos existentes a crear nuevos. No crear `.md` salvo que el usuario lo pida.
 - **Tests**: el backend tiene suite en `backend/tests/` con hook pre-commit que bloquea commits con tests fallando. Setup: `make install-test-deps && make install-hooks`. Cualquier cambio en lógica crítica (planes, paywall Pro, auth, pagos) debe sumar/actualizar tests — detalle en [backend/CLAUDE.md](backend/CLAUDE.md#tests). El frontend todavía no tiene suite y se verifica en navegador.
+- **Load testing**: tests de carga con [k6](https://k6.io) en `backend/loadtest/` que le pegan a `/planes` en producción (read-only, anónimo). Cómo correrlos y qué miden: [backend/CLAUDE.md](backend/CLAUDE.md#load-testing-k6).
 
 ## Archivos por dominio (más detalle en `backend/CLAUDE.md` y `frontend/CLAUDE.md`)
 
