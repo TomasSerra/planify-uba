@@ -16,19 +16,29 @@ frontend/src/
     AuthProvider.tsx     React Context + monta <AuthDialog> global
     AuthDialog.tsx       modal login/signup sobre la app (sin nueva ruta)
     PaywallProvider.tsx  dialog de pago (MP)
+    CareerProvider.tsx   monta el Context de carrera + modal forzado de selección
+    CarreraSelector.tsx  UI para elegir/cambiar carrera
     Header.tsx           tabs + user menu + boton "Hacete Pro"
+    Footer.tsx
     MateriaSelector.tsx  popover de búsqueda + lista de materias agregadas
     MateriaCard.tsx      card por materia con dropdowns Cátedra y Profesores
     RestriccionesPanel.tsx  días, franjas, sedes (gateado por paywall)
     CalendarioPlan.tsx   grilla 7-23 hs × días, bloques absolute-positioned
+    CalendarioPlanSkeleton.tsx  loading state del calendario
     PlanNavigator.tsx    flechas + "Plan X de N"
+    HistorialPopover.tsx historial de planes generados
     ui/                  shadcn primitives (button, popover, command, dialog, input, label, ...)
   lib/
     api.ts               fetch wrapper, baseURL desde VITE_API_URL
     firebase.ts          initializeApp + getAuth + GoogleAuthProvider
     authContext.ts       tipos y React Context de auth
     useAuth.ts           hook { user, isAuthenticated, isLoading, getAccessTokenSilently, logout, openLogin }
-    useSubscription.ts   query a /me/subscription, expone { isPaid, validUntil, isLoading }
+    useMe.ts             query a /me (perfil + subscription); fuente única de ese estado
+    useSubscription.ts   wrapper sobre useMe() → { isPaid, validUntil, isLoading }
+    career.tsx           CareerContext + useCareer() (carrera activa, sedes disponibles)
+    planEstudio.ts       armado del plan de estudio
+    planHistory.ts       persistencia del historial de planes
+    useIsTouchDevice.ts  detección de dispositivo táctil
     paywall.ts           hook para abrir el PaywallDialog
     alert.tsx            dialog de alert global
     types.ts             tipos compartidos con el backend (mantener en sync)
@@ -48,7 +58,7 @@ tailwind.config.ts
 ## Auth
 
 - `<AuthProvider>` (en [main.tsx](src/main.tsx)) inicializa Firebase y suscribe `onAuthStateChanged`. Mantiene `user`, `isLoading`, `openLogin`.
-- Hooks: `useAuth()` para acceder al estado, `useSubscription()` para saber si es Pro.
+- Hooks: `useAuth()` para acceder al estado, `useMe()` para perfil + suscripción (`/me`), `useSubscription()` (wrapper de `useMe()`) para saber si es Pro, `useCareer()` para la carrera activa.
 - Login UX: botón "Iniciar sesión" llama `openLogin("signin")` → abre `<AuthDialog>` (modal, sin redirect). El modal tiene tabs `signin | signup`. Google usa `signInWithPopup` con fallback a `signInWithRedirect` si el popup es bloqueado.
 - Token a la API: `await getAccessTokenSilently()` (en realidad `auth.currentUser.getIdToken()`) → se manda como `Authorization: Bearer <idToken>`. Firebase auto-refresca el token.
 - Logout: `logout()` (acepta y descarta cualquier arg legacy).

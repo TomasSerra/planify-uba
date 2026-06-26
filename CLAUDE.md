@@ -1,6 +1,8 @@
 # Organización Horarios — Facultad de Psicología (UBA)
 
-App para armar planes de cursada combinando materias, cátedras, profesores y restricciones (días, franjas, sedes). El backend genera todas las combinaciones válidas vía producto cartesiano + filtro de solapamientos. Modelo freemium: anónimo y free igual; usuario Pro (pago único 3 meses por Mercado Pago) desbloquea filtros, favoritos y cap de 100 planes.
+App para armar planes de cursada combinando materias, cátedras, profesores y restricciones (días, franjas, sedes). El backend genera todas las combinaciones válidas vía producto cartesiano + filtro de solapamientos. Modelo freemium: anónimo y free igual; usuario Pro (pago 3 meses por Mercado Pago, renovable/acumulable) desbloquea filtros, favoritos y cap de 100 planes.
+
+Cubre las cuatro carreras de la Facultad de Psicología (UBA): Licenciatura en Psicología, Profesorado en Psicología, Licenciatura en Musicoterapia y Licenciatura en Terapia Ocupacional. El usuario elige carrera (modal forzado la primera vez) y eso filtra materias y sedes disponibles.
 
 ## Tracking
 
@@ -31,9 +33,9 @@ Local: Docker Compose levanta todo. El service account de Firebase vive en `back
 
 ```
 backend/
-  api/           FastAPI (main.py, planes.py, auth.py, subs.py, pagos.py, favoritos.py, models.py, db.py)
+  api/           FastAPI (main.py, planes.py, auth.py, me.py, subs.py, pagos.py, favoritos.py, models.py, db.py)
   scraper/       discovery + parse + insert
-  schema.sql     DDL (materias, catedras, cursos, comision_obliga, subscriptions, favorite_plans)
+  schema.sql     DDL (carreras, user_profile, materias, catedras, cursos, comision_obliga, subscriptions, favorite_plans)
   firebase-sa.json   (gitignored) service account de Firebase Admin
 frontend/
   src/
@@ -41,13 +43,19 @@ frontend/
     components/
       AuthProvider.tsx, AuthDialog.tsx          modal login/signup
       PaywallProvider.tsx                       dialog de pago
-      Header, MateriaSelector, MateriaCard, CalendarioPlan, RestriccionesPanel, PlanNavigator, ui/*
+      CareerProvider.tsx, CarreraSelector.tsx   selección de carrera (modal forzado 1ra vez)
+      Header, Footer, MateriaSelector, MateriaCard, CalendarioPlan, CalendarioPlanSkeleton,
+      RestriccionesPanel, PlanNavigator, HistorialPopover, ui/*
     lib/
       api.ts, types.ts, utils.ts, alert.tsx
       firebase.ts        initializeApp + getAuth + GoogleAuthProvider
       authContext.ts     tipos + Context
       useAuth.ts         hook que devuelve { user, isAuthenticated, isLoading, getAccessTokenSilently, logout, openLogin }
-      useSubscription.ts query a /me/subscription
+      useMe.ts           query a /me (perfil + subscription); fuente única de ese estado
+      useSubscription.ts wrapper sobre useMe() → { isPaid, validUntil, isLoading }
+      career.tsx         Context + useCareer() (carrera activa, sedes disponibles)
+      planEstudio.ts, planHistory.ts            armado/persistencia de planes e historial
+      useIsTouchDevice.ts
       paywall.ts         hook para abrir el PaywallDialog
 docker-compose.yml
 Makefile        // `make up` levanta todo y siembra DB si está vacía
@@ -68,7 +76,9 @@ URLs locales: FE `http://localhost:5173`, API `http://localhost:8000`, Swagger `
 
 ## Modelo de datos
 
-- `materias(codigo, nombre)` — código numérico de la materia.
+- `carreras(slug, nombre, sort_order)` — las 4 carreras de la facultad. El slug se mapea desde el id del tab del HTML de `academica.psi.uba.ar` (PS/PR/LM/TE) en el scraper.
+- `user_profile(uid, carrera)` — carrera elegida por un usuario logueado (anónimos la guardan en `localStorage`). Se crea/actualiza vía `PATCH /me/profile`.
+- `materias(codigo, nombre, carrera)` — código numérico de la materia; `carrera` referencia `carreras(slug)`.
 - `catedras(id, materia_codigo, numero, titular, cuatrimestre)`.
 - `cursos(id, catedra_id, tipo, codigo, dia, hora_inicio, hora_fin, profesor, aula, sede, ...)` con `tipo ∈ {teorico, seminario, comision}`.
 - `comision_obliga(comision_id, obliga_a_id)` — many-to-many: una comisión puede obligar a 1 o 2 cursos (teórico/seminario) de la misma cátedra. El scraper resuelve esto con matching difuso (cobertura ~99.95%).
@@ -83,6 +93,7 @@ Una "opción" para una materia = (comisión + sus obligas). Un "plan" = una opci
 - Modal soporta email/password y Google (`signInWithPopup`, fallback a redirect si popup bloqueado).
 - Token: `getAccessTokenSilently()` resuelve a `auth.currentUser.getIdToken()`. Se manda como `Authorization: Bearer <idToken>` a la API.
 - BE: dependency `current_user` valida con `firebase_admin.auth.verify_id_token`. `user.id` = `uid` de Firebase. `optional_user` para endpoints semi-públicos (como `/planes`).
+- Estado del usuario: `GET /me` ([backend/api/me.py](backend/api/me.py)) devuelve perfil (carrera) + subscription en un solo payload. `useMe()` es la única fuente; `useSubscription()` lo envuelve.
 - Persistencia: Firebase usa IndexedDB (compartido entre tabs sin parches manuales).
 
 ## Convenciones

@@ -7,9 +7,10 @@ API que sirve materias/cátedras/cursos y arma planes de cursada. Scraper aparte
 ```
 backend/
   api/
-    main.py       endpoints + lifespan + CORS
+    main.py       endpoints + lifespan + CORS (incluye /carreras y /materias filtradas por carrera)
     auth.py       dependency current_user / optional_user (firebase-admin)
-    subs.py       /me/subscription + helper has_active_subscription
+    me.py         GET /me (perfil + subscription) + PATCH /me/profile (elegir carrera)
+    subs.py       helper has_active_subscription + _record_payment
     pagos.py      /pagos/checkout + webhook de Mercado Pago
     favoritos.py  CRUD de favoritos (Pro)
     planes.py     algoritmo de armado (producto cartesiano + filtros + overlap check)
@@ -51,13 +52,15 @@ API en **Render** (Docker, mismo `Dockerfile`). DB en **Neon** Postgres (`DATABA
 | Método | Path | Auth | Notas |
 | --- | --- | --- | --- |
 | GET | `/health` | — | Healthcheck DB. |
-| GET | `/materias?q=` | — | Lista de materias con filtro substring. |
+| GET | `/carreras` | — | Lista de carreras con sus sedes. |
+| GET | `/materias?q=&carrera=` | — | Lista de materias con filtro substring, opcionalmente acotada a una carrera. |
 | GET | `/materias/{codigo}` | — | Materia + cátedras. |
 | GET | `/materias/{codigo}/opciones` | — | Materia + cátedras + profesores únicos. Lo consume `MateriaCard.tsx`. |
 | GET | `/catedras/{id}` | — | Cátedra + todos sus cursos con `obliga_a` resuelto. |
 | GET | `/cursos?...&incluir_obliga=` | — | Búsqueda flexible. |
 | POST | `/planes` | `optional_user` | Si el usuario es Pro, aplica filtros completos y cap 100. Si no, anula filtros y capea a 15. |
-| GET | `/me/subscription` | `current_user` | Estado de suscripción del usuario. |
+| GET | `/me` | `current_user` | Perfil (carrera) + estado de suscripción en un solo payload. |
+| PATCH | `/me/profile` | `current_user` | Setea la carrera elegida del usuario. |
 | POST | `/pagos/checkout` | `current_user` | Crea preferencia de MP, devuelve `init_point`. |
 | GET | `/pagos/{external_reference}/status` | — | Polling público de status (idempotente). |
 | POST | `/pagos/webhook` | — | Webhook de MP (valida firma `MP_WEBHOOK_SECRET`). |
