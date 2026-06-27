@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -99,8 +99,32 @@ function Tabs() {
 function MobileBottomNav() {
   const { pathname } = useLocation();
   const TABS = useTabs();
+  const navRef = useRef<HTMLElement>(null);
+
+  // `position: fixed; bottom: 0` se ancla al layout viewport, así que cuando el
+  // navegador mobile muestra/esconde su barra inferior (o aparece el teclado) la
+  // nav queda tapada o "salta" al scrollear. La pegamos al borde realmente
+  // visible con la Visual Viewport API.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = navRef.current;
+    if (!vv || !el) return;
+    const update = () => {
+      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      el.style.transform = overlap ? `translateY(${-overlap}px)` : "";
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   return (
     <nav
+      ref={navRef}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
@@ -173,10 +197,13 @@ function UserMenu() {
 
   if (!isAuthenticated) {
     return (
-      <Button size="sm" onClick={() => openLogin("signin")}>
-        <LogIn className="size-4" />
-        Iniciar sesión
-      </Button>
+      <div className="flex items-center gap-3">
+        <PayChip />
+        <Button variant="outline" size="sm" onClick={() => openLogin("signin")}>
+          <LogIn className="size-4" />
+          <span className="hidden sm:inline">Iniciar sesión</span>
+        </Button>
+      </div>
     );
   }
 

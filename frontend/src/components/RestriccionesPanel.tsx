@@ -168,8 +168,8 @@ export function RestriccionesPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
-      <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
       <div className="space-y-6">
       {/* Días permitidos */}
       <section className="space-y-3">

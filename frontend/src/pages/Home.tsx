@@ -9,6 +9,7 @@ import {
   XCircle,
   Heart,
   ChevronDown,
+  Filter,
 } from "lucide-react";
 import mpIcon from "@/assets/mp-icon.png";
 import { useAuth } from "@/lib/useAuth";
@@ -815,7 +816,14 @@ export function Home() {
       .join(", ");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className={
+        "flex flex-col bg-background " +
+        (resultado === null
+          ? "h-[100dvh] lg:h-auto lg:min-h-[100dvh]"
+          : "min-h-[100dvh]")
+      }
+    >
       <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
       <PagoStatusDialog
         externalReference={pagoExternalRef}
@@ -823,9 +831,14 @@ export function Home() {
       />
       <Header />
 
-      <main className="container space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto]">
-          <div className="flex flex-col gap-3 lg:flex-row">
+      <main className="container flex min-h-0 flex-1 flex-col space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8 lg:block">
+        <div
+          className={
+            "flex flex-col gap-3 lg:grid lg:gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto] " +
+            (resultado === null ? "min-h-0 flex-1" : "")
+          }
+        >
+          <div className="flex shrink-0 flex-col gap-3 lg:flex-row">
             <HistorialPopover onRestore={restoreFromHistory} />
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               {!isAuthenticated && <CarreraSelector />}
@@ -842,8 +855,8 @@ export function Home() {
             </div>
           </div>
 
-          <Card className="lg:row-span-2 lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:flex-col lg:overflow-hidden">
-            <CardHeader>
+          <Card className="flex min-h-0 flex-col overflow-hidden lg:row-span-2 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-9rem)]">
+            <CardHeader className={filtrosOpen ? undefined : "pb-6 lg:pb-4"}>
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
@@ -856,6 +869,7 @@ export function Home() {
                       (filtrosOpen ? "rotate-180" : "")
                     }
                   />
+                  <Filter className="size-4 shrink-0 text-foreground lg:hidden" />
                   <CardTitle>Filtros</CardTitle>
                 </button>
                 {(diasPermitidos.length !== ALL_DIAS.length ||
@@ -881,8 +895,8 @@ export function Home() {
             </CardHeader>
             <CardContent
               className={
-                (filtrosOpen ? "" : "hidden lg:block") +
-                " lg:flex lg:min-h-0 lg:flex-1 lg:flex-col"
+                (filtrosOpen ? "flex" : "hidden lg:flex") +
+                " min-h-0 flex-1 flex-col"
               }
             >
               <RestriccionesPanel
@@ -903,13 +917,18 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className="flex gap-3">
+          <div className={"flex gap-3 " + (resultado === null ? "mt-auto lg:mt-0" : "")}>
             <div className="hidden size-10 shrink-0 lg:block" aria-hidden />
             <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="text-sm text-muted-foreground">
-                {materias.length === 0
-                  ? "Seleccioná al menos una materia para generar planes."
-                  : `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`}
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                {materias.length === 0 ? (
+                  <>
+                    <AlertCircle className="size-4 shrink-0" />
+                    Agregá al menos una materia
+                  </>
+                ) : (
+                  `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`
+                )}
               </p>
               <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
                 {resultado !== null && (

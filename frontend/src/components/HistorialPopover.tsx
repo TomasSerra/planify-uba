@@ -38,10 +38,12 @@ export function HistorialPopover({
   const { isPaid } = useSubscription();
   const uid = user?.uid ?? null;
   const [open, setOpen] = useState(false);
-  const [entries, setEntries] = useState<PlanHistoryEntry[]>([]);
+  const [entries, setEntries] = useState<PlanHistoryEntry[]>(() =>
+    loadHistory(uid),
+  );
 
   useEffect(() => {
-    if (open) setEntries(loadHistory(uid));
+    setEntries(loadHistory(uid));
   }, [open, uid]);
 
   function handleRestore(entry: PlanHistoryEntry) {
@@ -53,6 +55,8 @@ export function HistorialPopover({
     e.stopPropagation();
     setEntries(removeHistory(uid, id));
   }
+
+  if (entries.length === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,12 +73,7 @@ export function HistorialPopover({
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Historial · últimos {entries.length}
         </div>
-        {entries.length === 0 ? (
-          <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-            Todavía no generaste ningún plan.
-          </div>
-        ) : (
-          <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto sm:max-h-96">
+        <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto sm:max-h-96">
             {entries.map((entry) => {
               const nMaterias = entry.filters.materias.length;
               const nPlanes = entry.response.planes.length;
@@ -121,8 +120,7 @@ export function HistorialPopover({
                 </li>
               );
             })}
-          </ul>
-        )}
+        </ul>
       </PopoverContent>
     </Popover>
   );

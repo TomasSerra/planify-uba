@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/useAuth";
 import { useSubscription } from "@/lib/useSubscription";
@@ -116,6 +117,22 @@ const formattedPrice = new Intl.NumberFormat("es-AR").format(
   SUBSCRIPTION_PRICE_ARS,
 );
 
+// Mismo breakpoint que el `md:` de Tailwind. Reactivo porque decide qué
+// componente renderizar (Dialog de desktop vs sheet custom de mobile).
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => window.matchMedia("(min-width: 768px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isDesktop;
+}
+
 function PaywallDialog({
   open,
   reason,
@@ -170,80 +187,81 @@ function PaywallDialog({
   }
 
   const { title, description } = PAYWALL_COPY[reason ?? "general"];
+  const isDesktop = useIsDesktop();
+
+  const ctaButton = !isAuthenticated ? (
+    <Button
+      size="lg"
+      className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+      onClick={() => openLogin("signin")}
+    >
+      <LogIn className="size-4" />
+      Iniciar sesión
+    </Button>
+  ) : subLoading ? (
+    <div className="flex items-center justify-center py-3">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+    </div>
+  ) : isPaid ? (
+    <div className="flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+      <CheckCircle2 className="size-4" />
+      Ya tenés Pro activo
+    </div>
+  ) : (
+    <Button
+      size="lg"
+      className="mx-auto w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90 md:max-w-xs"
+      onClick={handleHaceteProClick}
+      disabled={mobileRedirectLoading}
+    >
+      {mobileRedirectLoading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <img src={mpIcon} alt="" className="h-4 w-auto" />
+      )}
+      <span className="md:hidden">Pagar con Mercado Pago</span>
+      <span className="hidden md:inline">Hacete Pro</span>
+    </Button>
+  );
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className={cn(
-            // Fullscreen scrolleable en mobile: el comparativo + tarjetas no
-            // entra en un dialog centrado y el contenido fuera de viewport
-            // queda inaccesible (Radix Dialog no agrega scroll). En desktop
-            // volvemos al modal centrado con max-w-3xl.
-            "left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none border-0",
-            "md:left-[50%] md:top-[50%] md:h-auto md:max-h-[90vh] md:w-[calc(100vw-2rem)] md:max-w-2xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl md:border"
-          )}
-        >
-          <DialogHeader className="text-center sm:text-center">
-            <DialogTitle className="flex items-center justify-center gap-2 text-center">
-              <Gem className="size-5 text-[#EC990B]" />
-              {title}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {description}
-            </DialogDescription>
-          </DialogHeader>
+      {isDesktop ? (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="h-auto max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto rounded-2xl border">
+            <DialogHeader className="text-center sm:text-center">
+              <DialogTitle className="flex items-center justify-center gap-2 text-center">
+                <Gem className="size-5 text-[#EC990B]" />
+                {title}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                {description}
+              </DialogDescription>
+            </DialogHeader>
 
-          {(() => {
-            const ctaButton = !isAuthenticated ? (
-              <Button
-                size="lg"
-                className="w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-                onClick={() => openLogin("signin")}
-              >
-                <LogIn className="size-4" />
-                Iniciar sesión
-              </Button>
-            ) : subLoading ? (
-              <div className="flex items-center justify-center py-3">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : isPaid ? (
-              <div className="flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                <CheckCircle2 className="size-4" />
-                Ya tenés Pro activo
-              </div>
-            ) : (
-              <Button
-                size="lg"
-                className="mx-auto w-full bg-[#EC990B] text-white hover:bg-[#EC990B]/90 md:max-w-xs"
-                onClick={handleHaceteProClick}
-                disabled={mobileRedirectLoading}
-              >
-                {mobileRedirectLoading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <img src={mpIcon} alt="" className="h-4 w-auto" />
-                )}
-                <span className="md:hidden">Pagar con Mercado Pago</span>
-                <span className="hidden md:inline">Hacete Pro</span>
-              </Button>
-            );
+            <div className="flex flex-col gap-4">
+              <ComparisonTable />
+              {ctaButton}
+            </div>
 
-            return (
-              <div className="flex flex-col gap-4">
-                <ComparisonTable />
-                {ctaButton}
-              </div>
-            );
-          })()}
-
-          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-            <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
-            Pago único. No es una suscripción automática.
-          </p>
-        </DialogContent>
-      </Dialog>
+            {isAuthenticated && (
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+                <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+                Pago único. No es una suscripción automática.
+              </p>
+            )}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <PaywallMobileSheet
+          open={open}
+          onOpenChange={onOpenChange}
+          title={title}
+          description={description}
+          showPolicy={isAuthenticated}
+          ctaButton={ctaButton}
+        />
+      )}
 
       <PaymentMethodDialog
         open={open && showPayment}
@@ -254,6 +272,83 @@ function PaywallDialog({
         }}
       />
     </>
+  );
+}
+
+// Sheet custom de mobile: panel full-screen con el CTA SIEMPRE visible.
+// Usamos 100dvh (dynamic viewport height) en vez de 100vh para medir el
+// viewport visible real — así la chrome del navegador no tapa el footer — y
+// fijamos el botón en un footer shrink-0; solo el cuerpo (la tabla) scrollea.
+function PaywallMobileSheet({
+  open,
+  onOpenChange,
+  title,
+  description,
+  showPolicy,
+  ctaButton,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  description: string;
+  showPolicy: boolean;
+  ctaButton: ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onOpenChange]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => onOpenChange(false)}
+      />
+      <div className="absolute inset-0 flex h-[100dvh] flex-col bg-white">
+        <div className="relative shrink-0 border-b px-4 pb-3 pt-4 text-center">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground hover:bg-muted"
+            aria-label="Cerrar"
+          >
+            <X className="size-5" />
+          </button>
+          <h2 className="flex items-center justify-center gap-2 text-lg font-semibold">
+            <Gem className="size-5 text-[#EC990B]" />
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <ComparisonTable />
+        </div>
+
+        <div className="shrink-0 border-t px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+          {ctaButton}
+          {showPolicy && (
+            <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+              Pago único. No es una suscripción automática.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

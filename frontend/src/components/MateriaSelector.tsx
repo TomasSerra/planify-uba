@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/command";
 import { MateriaCard } from "@/components/MateriaCard";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useCareer } from "@/lib/career";
 import type { MateriaListItem, MateriaSeleccionada } from "@/lib/types";
 
@@ -147,7 +148,12 @@ export function MateriaSelector({ selected, onChange }: Props) {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverAnchor asChild>
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div
+              className={cn(
+                "flex items-center gap-2 text-sm text-muted-foreground",
+                selected.length === 0 && "hidden sm:flex",
+              )}
+            >
               {loading && selected.length === 0 ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
@@ -162,7 +168,12 @@ export function MateriaSelector({ selected, onChange }: Props) {
               </span>
             </div>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" disabled={loading}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading}
+                className={cn(selected.length === 0 && "w-full sm:w-auto")}
+              >
                 {loading ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
