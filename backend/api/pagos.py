@@ -26,7 +26,7 @@ MP_WEBHOOK_SECRET = os.environ.get("MP_WEBHOOK_SECRET", "")
 MP_SKIP_SIGNATURE = os.environ.get("MP_SKIP_SIGNATURE", "") == "1"
 APP_URL = os.environ.get("APP_URL", "http://localhost:5173").rstrip("/")
 APP_URL_BACKEND = os.environ.get("APP_URL_BACKEND", "http://localhost:8000").rstrip("/")
-SUBSCRIPTION_PRICE_ARS = float(os.environ.get("SUBSCRIPTION_PRICE_ARS", "3000"))
+SUBSCRIPTION_PRICE_ARS = float(os.environ.get("SUBSCRIPTION_PRICE_ARS", "2800"))
 SUBSCRIPTION_DAYS = int(os.environ.get("SUBSCRIPTION_DAYS", "90"))
 
 MP_API = "https://api.mercadopago.com"

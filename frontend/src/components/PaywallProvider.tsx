@@ -29,7 +29,7 @@ import { PaywallContext, type PaywallReason } from "@/lib/paywall";
 import { cn } from "@/lib/utils";
 
 // Mantener en sync con backend: SUBSCRIPTION_PRICE_ARS y SUBSCRIPTION_DAYS.
-const SUBSCRIPTION_PRICE_ARS = 3000;
+const SUBSCRIPTION_PRICE_ARS = 2800;
 const SUBSCRIPTION_MONTHS = 3;
 
 export const FREE_MAX_PLANES = 15;
