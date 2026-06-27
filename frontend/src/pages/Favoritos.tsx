@@ -107,7 +107,7 @@ function FavoritoCard({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="flex min-w-0 flex-1 items-start gap-3 text-left sm:items-center"
         >
           <ChevronDown
             className={

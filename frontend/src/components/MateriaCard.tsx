@@ -193,7 +193,7 @@ function CatedraDropdown({
         type="button"
         onClick={onLockedClick}
         title="Hacete Pro para elegir una cátedra específica"
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted max-sm:min-h-[44px]"
       >
         <GraduationCap className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
@@ -207,7 +207,7 @@ function CatedraDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent max-sm:min-h-[44px]"
         >
           <GraduationCap className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{label}</span>
@@ -222,7 +222,7 @@ function CatedraDropdown({
             setOpen(false);
           }}
           className={
-            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent max-sm:min-h-[44px] " +
             (selected === null ? "bg-accent font-medium" : "")
           }
         >
@@ -241,7 +241,7 @@ function CatedraDropdown({
               setOpen(false);
             }}
             className={
-              "flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+              "flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent max-sm:min-h-[44px] " +
               (selected === c.id ? "bg-accent" : "")
             }
           >
@@ -298,7 +298,7 @@ function ProfesoresDropdown({
         type="button"
         onClick={onLockedClick}
         title="Hacete Pro para filtrar profesores"
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted max-sm:min-h-[44px]"
       >
         <Users className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
@@ -325,7 +325,7 @@ function ProfesoresDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent max-sm:min-h-[44px]"
         >
           <Users className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{label}</span>
@@ -362,7 +362,7 @@ function ProfesoresDropdown({
               return (
                 <label
                   key={p}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent max-sm:min-h-[44px]"
                 >
                   <Checkbox
                     checked={isSelected}
@@ -404,7 +404,7 @@ function SedeDropdown({
         type="button"
         onClick={onLockedClick}
         title="Hacete Pro para forzar una sede"
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+        className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted max-sm:min-h-[44px]"
       >
         <MapPin className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
@@ -418,7 +418,7 @@ function SedeDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-xs font-medium transition-colors hover:bg-accent max-sm:min-h-[44px]"
         >
           <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{label}</span>
@@ -433,7 +433,7 @@ function SedeDropdown({
             setOpen(false);
           }}
           className={
-            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent max-sm:min-h-[44px] " +
             (selected === null ? "bg-accent font-medium" : "")
           }
         >
@@ -449,7 +449,7 @@ function SedeDropdown({
               setOpen(false);
             }}
             className={
-              "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+              "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent max-sm:min-h-[44px] " +
               (selected === s.codigo ? "bg-accent font-medium" : "")
             }
           >

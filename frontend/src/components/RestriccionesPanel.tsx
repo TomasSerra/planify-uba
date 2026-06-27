@@ -186,7 +186,7 @@ export function RestriccionesPanel({
                 type="button"
                 onClick={() => toggleDia(dia)}
                 className={
-                  "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors " +
+                  "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors max-sm:min-h-[44px] " +
                   (active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-white text-muted-foreground hover:bg-accent")
@@ -216,7 +216,7 @@ export function RestriccionesPanel({
         <p className="text-xs text-muted-foreground">
           Descarta opciones cuya comisión no tenga cupos disponibles.
         </p>
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2.5 transition-colors hover:bg-accent">
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2.5 transition-colors hover:bg-accent max-sm:min-h-[44px]">
           <Switch
             checked={soloCupos}
             onCheckedChange={onSoloCuposChange}
@@ -286,7 +286,7 @@ export function RestriccionesPanel({
                         type="button"
                         onClick={() => toggleFranjaDia(i, d)}
                         className={
-                          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
+                          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors max-sm:min-h-[44px] " +
                           (active
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-white text-muted-foreground hover:bg-accent")

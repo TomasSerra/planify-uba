@@ -39,7 +39,7 @@ export function CarreraSelector() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-sm font-medium transition-colors hover:bg-accent"
+            className="flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-white px-3 text-left text-sm font-medium transition-colors hover:bg-accent max-sm:min-h-[44px]"
           >
             <GraduationCap className="size-4 shrink-0 text-[#861f5c]" />
             <span className="flex-1 truncate">
@@ -61,7 +61,7 @@ export function CarreraSelector() {
                 setOpen(false);
               }}
               className={
-                "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent " +
+                "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent max-sm:min-h-[44px] " +
                 (c.slug === carrera ? "bg-accent font-medium" : "")
               }
             >

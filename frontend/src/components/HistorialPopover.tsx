@@ -64,7 +64,7 @@ export function HistorialPopover({
         <button
           type="button"
           aria-label="Historial de planes generados"
-          className="flex size-10 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-white shadow-sm transition-colors hover:bg-accent"
+          className="flex size-10 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-white shadow-sm transition-colors hover:bg-accent max-sm:min-h-[44px] max-sm:min-w-[44px]"
         >
           <Clock className="size-4" />
         </button>
@@ -84,7 +84,7 @@ export function HistorialPopover({
               return (
                 <li
                   key={entry.id}
-                  className="group flex cursor-pointer items-start gap-2 px-2 py-2 transition-colors hover:bg-accent"
+                  className="group flex cursor-pointer items-start gap-2 px-2 py-2 transition-colors hover:bg-accent max-sm:min-h-[44px]"
                   onClick={() => handleRestore(entry)}
                 >
                   <div className="min-w-0 flex-1">
