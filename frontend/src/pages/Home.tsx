@@ -816,14 +816,7 @@ export function Home() {
       .join(", ");
 
   return (
-    <div
-      className={
-        "flex flex-col bg-background " +
-        (resultado === null
-          ? "h-[100dvh] lg:h-auto lg:min-h-[100dvh]"
-          : "min-h-[100dvh]")
-      }
-    >
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
       <PagoStatusDialog
         externalReference={pagoExternalRef}
@@ -831,11 +824,11 @@ export function Home() {
       />
       <Header />
 
-      <main className="container flex min-h-0 flex-1 flex-col space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8 lg:block">
+      <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8 lg:block">
         <div
           className={
             "flex flex-col gap-3 lg:grid lg:gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto] " +
-            (resultado === null ? "min-h-0 flex-1" : "")
+            (resultado === null ? "flex-1" : "")
           }
         >
           <div className="flex shrink-0 flex-col gap-3 lg:flex-row">
