@@ -17,7 +17,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import { useCareer } from "@/lib/career";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
 import { SEDES } from "@/lib/types";
@@ -59,19 +58,72 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
     };
   }, [seleccion.codigo]);
 
-  // Profesores disponibles según la cátedra elegida (o unión de todas).
-  const profesoresDisponibles = useMemo(() => {
+  // Filtrado de a tres (cátedra ⇄ profesor ⇄ sede): cada dimensión se acota a
+  // lo compatible con las otras dos. La relación profesor↔sede vive en la
+  // comisión, así que derivamos todo de la lista plana de comisiones.
+  const comisiones = useMemo(() => {
     if (!opciones) return [];
-    const filtradas = seleccion.catedra_id
-      ? opciones.catedras.filter((c) => c.id === seleccion.catedra_id)
-      : opciones.catedras;
-    const set = new Set<string>();
-    filtradas.forEach((c) => c.profesores.forEach((p) => set.add(p)));
-    return Array.from(set).sort();
-  }, [opciones, seleccion.catedra_id]);
+    return opciones.catedras.flatMap((c) =>
+      (c.comisiones ?? []).map((cm) => ({
+        catedra_id: c.id,
+        profesor: cm.profesor,
+        sede: cm.sede,
+      }))
+    );
+  }, [opciones]);
 
-  // Si cambió la cátedra y los profesores seleccionados ya no son válidos,
-  // sanitizo. null = todos (no hay nada que sanitizar).
+  // Universos posibles para esta materia.
+  const profesoresUniverse = useMemo(() => {
+    const set = new Set<string>();
+    comisiones.forEach((c) => c.profesor && set.add(c.profesor));
+    return Array.from(set).sort();
+  }, [comisiones]);
+
+  const sedesUniverse = useMemo(() => {
+    const present = new Set<string>();
+    comisiones.forEach((c) => c.sede && present.add(c.sede));
+    return SEDES.filter((s) => present.has(s.codigo));
+  }, [comisiones]);
+
+  // Disponibles según la selección actual (excluyendo la propia dimensión).
+  const catedrasDisponibles = useMemo(() => {
+    const set = new Set<number>();
+    comisiones.forEach((c) => {
+      const okSede = seleccion.sede == null || c.sede === seleccion.sede;
+      const okProf =
+        seleccion.profesores == null ||
+        (c.profesor != null && seleccion.profesores.includes(c.profesor));
+      if (okSede && okProf) set.add(c.catedra_id);
+    });
+    return set;
+  }, [comisiones, seleccion.sede, seleccion.profesores]);
+
+  const profesoresDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    comisiones.forEach((c) => {
+      const okCat =
+        seleccion.catedra_id == null || c.catedra_id === seleccion.catedra_id;
+      const okSede = seleccion.sede == null || c.sede === seleccion.sede;
+      if (okCat && okSede && c.profesor) set.add(c.profesor);
+    });
+    return Array.from(set).sort();
+  }, [comisiones, seleccion.catedra_id, seleccion.sede]);
+
+  const sedesDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    comisiones.forEach((c) => {
+      const okCat =
+        seleccion.catedra_id == null || c.catedra_id === seleccion.catedra_id;
+      const okProf =
+        seleccion.profesores == null ||
+        (c.profesor != null && seleccion.profesores.includes(c.profesor));
+      if (okCat && okProf && c.sede) set.add(c.sede);
+    });
+    return set;
+  }, [comisiones, seleccion.catedra_id, seleccion.profesores]);
+
+  // Si la cátedra/sede elegida deja profesores seleccionados fuera de lo
+  // disponible, los limpio. null = todos (no hay nada que sanitizar).
   useEffect(() => {
     if (seleccion.profesores === null) return;
     if (seleccion.profesores.length === 0) return;
@@ -123,6 +175,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
             ) : (
               <CatedraDropdown
                 catedras={opciones.catedras}
+                disponibles={catedrasDisponibles}
                 selected={seleccion.catedra_id}
                 onSelect={(id) => onChange({ ...seleccion, catedra_id: id })}
                 disabled={!isPaid}
@@ -138,7 +191,8 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
               <Skeleton className="h-9 w-full rounded-lg" />
             ) : (
               <ProfesoresDropdown
-                profesores={profesoresDisponibles}
+                profesores={profesoresUniverse}
+                disponibles={profesoresDisponibles}
                 selected={seleccion.profesores}
                 onChange={(profs) => onChange({ ...seleccion, profesores: profs })}
                 catedraLabel={catedraSeleccionada?.titular ?? null}
@@ -155,6 +209,8 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
               <Skeleton className="h-9 w-full rounded-lg" />
             ) : (
               <SedeDropdown
+                sedes={sedesUniverse}
+                disponibles={sedesDisponibles}
                 selected={seleccion.sede ?? null}
                 onSelect={(sede) => onChange({ ...seleccion, sede })}
                 disabled={!isPaid}
@@ -170,12 +226,14 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
 
 function CatedraDropdown({
   catedras,
+  disponibles,
   selected,
   onSelect,
   disabled,
   onLockedClick,
 }: {
   catedras: CatedraOpcion[];
+  disponibles: Set<number>;
   selected: number | null;
   onSelect: (id: number | null) => void;
   disabled?: boolean;
@@ -183,6 +241,8 @@ function CatedraDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const sel = catedras.find((c) => c.id === selected);
+  const habilitadas = catedras.filter((c) => disponibles.has(c.id));
+  const noDisponibles = catedras.filter((c) => !disponibles.has(c.id));
   const label = sel
     ? `Cát ${sel.numero ?? sel.id}${sel.titular ? ` · ${sel.titular}` : ""}`
     : `Todas (${catedras.length})`;
@@ -232,7 +292,7 @@ function CatedraDropdown({
           </span>
         </button>
         <Separator className="my-1" />
-        {catedras.map((c) => (
+        {habilitadas.map((c) => (
           <button
             key={c.id}
             type="button"
@@ -254,6 +314,30 @@ function CatedraDropdown({
             </span>
           </button>
         ))}
+        {noDisponibles.length > 0 && (
+          <>
+            <Separator className="my-1" />
+            <p className="px-2 py-1 text-xs text-muted-foreground">
+              No disponibles para la selección actual
+            </p>
+            {noDisponibles.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                disabled
+                className="flex w-full cursor-not-allowed flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm opacity-50"
+              >
+                <span className="font-medium">
+                  Cát {c.numero ?? c.id}
+                  {c.titular ? <> · <span className="font-normal">{c.titular}</span></> : null}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {c.profesores.length} profesores en comisiones
+                </span>
+              </button>
+            ))}
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -261,6 +345,7 @@ function CatedraDropdown({
 
 function ProfesoresDropdown({
   profesores,
+  disponibles,
   selected,
   onChange,
   catedraLabel,
@@ -268,6 +353,7 @@ function ProfesoresDropdown({
   onLockedClick,
 }: {
   profesores: string[];
+  disponibles: string[];
   selected: string[] | null;
   onChange: (profs: string[] | null) => void;
   catedraLabel: string | null;
@@ -275,22 +361,24 @@ function ProfesoresDropdown({
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const disponiblesSet = new Set(disponibles);
+  const noDisponibles = profesores.filter((p) => !disponiblesSet.has(p));
 
-  // Estados:
+  // Estados (sobre los profesores disponibles, que son los seleccionables):
   //   selected === null            -> todos (sentinel)
   //   selected.length === 0        -> ninguno explícito
-  //   selected.length === all      -> todos materializado (también cuenta como "todos")
+  //   selected cubre los disponibles -> todos materializado
   //   subset                       -> selección parcial
   const allSelected =
     selected === null ||
-    (selected.length === profesores.length && profesores.length > 0);
+    (selected.length === disponibles.length && disponibles.length > 0);
   const noneSelected = selected !== null && selected.length === 0;
 
   const label = allSelected
-    ? `Todos (${profesores.length})`
+    ? `Todos (${disponibles.length})`
     : noneSelected
     ? "Ninguno"
-    : `${selected!.length} de ${profesores.length}`;
+    : `${selected!.length} de ${disponibles.length}`;
 
   if (disabled) {
     return (
@@ -310,7 +398,7 @@ function ProfesoresDropdown({
   function toggle(prof: string) {
     if (selected === null) {
       // Estaban todos implícitamente; pasamos a modo explícito sin éste.
-      onChange(profesores.filter((p) => p !== prof));
+      onChange(disponibles.filter((p) => p !== prof));
       return;
     }
     if (selected.includes(prof)) {
@@ -344,34 +432,53 @@ function ProfesoresDropdown({
             onClick={() =>
               allSelected ? onChange([]) : onChange(null)
             }
-            disabled={profesores.length === 0}
+            disabled={disponibles.length === 0}
             className="text-xs text-primary disabled:cursor-not-allowed disabled:text-muted-foreground"
           >
             {allSelected ? "Deseleccionar todos" : "Seleccionar todos"}
           </button>
         </div>
         <div className="max-h-72 overflow-y-auto pr-1">
-          {profesores.length === 0 ? (
+          {disponibles.length === 0 && noDisponibles.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">
               No hay profesores disponibles.
             </p>
           ) : (
-            profesores.map((p) => {
-              const isSelected =
-                selected === null ? true : selected.includes(p);
-              return (
-                <label
-                  key={p}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent max-sm:min-h-[44px]"
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggle(p)}
-                  />
-                  <span className="flex-1 truncate">{p}</span>
-                </label>
-              );
-            })
+            <>
+              {disponibles.map((p) => {
+                const isSelected =
+                  selected === null ? true : selected.includes(p);
+                return (
+                  <label
+                    key={p}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent max-sm:min-h-[44px]"
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggle(p)}
+                    />
+                    <span className="flex-1 truncate">{p}</span>
+                  </label>
+                );
+              })}
+              {noDisponibles.length > 0 && (
+                <>
+                  <Separator className="my-1" />
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    No disponibles para la selección actual
+                  </p>
+                  {noDisponibles.map((p) => (
+                    <label
+                      key={p}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm opacity-50"
+                    >
+                      <Checkbox checked={false} disabled />
+                      <span className="flex-1 truncate">{p}</span>
+                    </label>
+                  ))}
+                </>
+              )}
+            </>
           )}
         </div>
       </PopoverContent>
@@ -380,21 +487,25 @@ function ProfesoresDropdown({
 }
 
 function SedeDropdown({
+  sedes,
+  disponibles,
   selected,
   onSelect,
   disabled,
   onLockedClick,
 }: {
+  sedes: Array<{ codigo: string; nombre: string }>;
+  disponibles: Set<string>;
   selected: string | null;
   onSelect: (sede: string | null) => void;
   disabled?: boolean;
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { sedesDisponibles } = useCareer();
+  const habilitadas = sedes.filter((s) => disponibles.has(s.codigo));
+  const noDisponibles = sedes.filter((s) => !disponibles.has(s.codigo));
   // Para el label usamos SEDES (lookup completo) por si la selección quedó
-  // en una sede que ya no aparece en `sedesDisponibles` — improbable porque
-  // al cambiar de carrera se resetea, pero es resiliente.
+  // en una sede que ya no aparece entre las de la materia.
   const sel = SEDES.find((s) => s.codigo === selected);
   const label = sel ? `${sel.nombre} (${sel.codigo})` : "Cualquiera";
 
@@ -440,7 +551,7 @@ function SedeDropdown({
           <span>Cualquier sede</span>
         </button>
         <Separator className="my-1" />
-        {sedesDisponibles.map((s) => (
+        {habilitadas.map((s) => (
           <button
             key={s.codigo}
             type="button"
@@ -457,6 +568,23 @@ function SedeDropdown({
             <span className="text-xs text-muted-foreground">{s.codigo}</span>
           </button>
         ))}
+        {noDisponibles.length > 0 && (
+          <>
+            <Separator className="my-1" />
+            <p className="px-2 py-1 text-xs text-muted-foreground">
+              No disponibles para la selección actual
+            </p>
+            {noDisponibles.map((s) => (
+              <div
+                key={s.codigo}
+                className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-sm opacity-50"
+              >
+                <span>{s.nombre}</span>
+                <span className="text-xs text-muted-foreground">{s.codigo}</span>
+              </div>
+            ))}
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );

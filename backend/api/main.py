@@ -19,6 +19,7 @@ from .models import (
     CatedraDetail,
     CatedraOpcion,
     CatedraSummary,
+    ComisionOpcion,
     CursoListItem,
     CursoResponse,
     CursoSummary,
@@ -218,7 +219,13 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
                        array_agg(DISTINCT cu.profesor)
                          FILTER (WHERE cu.profesor IS NOT NULL),
                        ARRAY[]::text[]
-                   ) AS profesores
+                   ) AS profesores,
+                   COALESCE(
+                       jsonb_agg(DISTINCT jsonb_build_object(
+                           'profesor', cu.profesor, 'sede', cu.sede))
+                         FILTER (WHERE cu.profesor IS NOT NULL OR cu.sede IS NOT NULL),
+                       '[]'::jsonb
+                   ) AS comisiones
               FROM catedras ca
               LEFT JOIN cursos cu ON cu.catedra_id = ca.id AND cu.tipo = 'comision'
              WHERE ca.materia_codigo = %s
@@ -237,6 +244,7 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
                 titular=r["titular"],
                 cuatrimestre=r["cuatrimestre"],
                 profesores=sorted(r["profesores"]),
+                comisiones=[ComisionOpcion(**c) for c in r["comisiones"]],
             )
             for r in rows
         ],

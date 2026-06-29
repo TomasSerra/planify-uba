@@ -68,12 +68,18 @@ class MateriaDetail(BaseModel):
     catedras: list[CatedraSummary]
 
 
+class ComisionOpcion(BaseModel):
+    profesor: str | None = None
+    sede: str | None = None
+
+
 class CatedraOpcion(BaseModel):
     id: int
     numero: str | None = None
     titular: str | None = None
     cuatrimestre: str | None = None
     profesores: list[str]  # profesores únicos de las comisiones de esta cátedra
+    comisiones: list[ComisionOpcion]  # tuplas (profesor, sede) de sus comisiones
 
 
 class MateriaOpciones(BaseModel):

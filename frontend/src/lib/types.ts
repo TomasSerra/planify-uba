@@ -62,12 +62,18 @@ export interface PlanRequest {
   solo_con_cupos?: boolean;
 }
 
+export interface ComisionOpcion {
+  profesor: string | null;
+  sede: string | null;
+}
+
 export interface CatedraOpcion {
   id: number;
   numero: string | null;
   titular: string | null;
   cuatrimestre: string | null;
   profesores: string[];
+  comisiones: ComisionOpcion[];
 }
 
 export interface MateriaOpciones {
