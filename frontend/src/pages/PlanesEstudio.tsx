@@ -150,7 +150,7 @@ export function PlanesEstudio() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container max-w-6xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
+      <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">
             {showSinglePlan ? "Plan de estudio" : "Planes de estudio"}

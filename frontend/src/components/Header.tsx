@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -8,6 +8,7 @@ import {
   Home as HomeIcon,
   LogIn,
   LogOut,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContactLinks } from "@/components/Footer";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
 import { useCareer } from "@/lib/career";
@@ -96,63 +105,59 @@ function Tabs() {
   );
 }
 
-function MobileBottomNav() {
+function MobileMenu() {
   const { pathname } = useLocation();
   const TABS = useTabs();
-  const navRef = useRef<HTMLElement>(null);
-
-  // `position: fixed; bottom: 0` se ancla al layout viewport, así que cuando el
-  // navegador mobile muestra/esconde su barra inferior (o aparece el teclado) la
-  // nav queda tapada o "salta" al scrollear. La pegamos al borde realmente
-  // visible con la Visual Viewport API.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    const el = navRef.current;
-    if (!vv || !el) return;
-    const update = () => {
-      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      el.style.transform = overlap ? `translateY(${-overlap}px)` : "";
-    };
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, []);
+  const [open, setOpen] = useState(false);
 
   return (
-    <nav
-      ref={navRef}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
-      <div className="flex items-stretch justify-around">
-        {TABS.map(({ to, label, icon: Icon }) => {
-          const active = pathname === to;
-          return (
-            <Link
-              key={to}
-              to={resolveTabTo(to)}
-              aria-label={label}
-              className={
-                "flex flex-1 flex-col items-center gap-0.5 px-3 py-3 text-[11px] font-medium transition-colors " +
-                (active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              <Icon
-                className="size-5"
-                strokeWidth={active ? 2.5 : 2}
-              />
-              {label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          aria-label="Abrir menú"
+          className="flex size-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent sm:hidden"
+        >
+          <Menu className="size-6" />
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="p-0"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center border-b border-border px-4 py-4">
+          <SheetTitle className="sr-only">Menú</SheetTitle>
+          <img src="/logo.png" alt="Horarios" className="h-9 w-auto" />
+        </div>
+
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {TABS.map(({ to, label, icon: Icon }) => {
+            const active = pathname === to;
+            return (
+              <SheetClose asChild key={to}>
+                <Link
+                  to={resolveTabTo(to)}
+                  className={
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors " +
+                    (active
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-accent")
+                  }
+                >
+                  <Icon className="size-5" strokeWidth={active ? 2.5 : 2} />
+                  {label}
+                </Link>
+              </SheetClose>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border p-4">
+          <ContactLinks orientation="col" />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -330,19 +335,17 @@ function CambiarCarreraButton({ onClicked }: { onClicked: () => void }) {
 
 export function Header() {
   return (
-    <>
-      <header className="border-b border-border bg-card">
-        <div className="container flex items-center gap-2 py-4 sm:gap-4">
-          <Link to="/" className="flex flex-1 items-center">
-            <img src="/logo.png" alt="Horarios" className="h-9 w-auto sm:h-12" />
-          </Link>
-          <Tabs />
-          <div className="flex flex-1 justify-end">
-            <UserMenu />
-          </div>
+    <header className="border-b border-border bg-card">
+      <div className="container flex items-center gap-2 py-4 sm:gap-4">
+        <MobileMenu />
+        <Link to="/" className="flex flex-1 items-center">
+          <img src="/logo.png" alt="Horarios" className="h-9 w-auto sm:h-12" />
+        </Link>
+        <Tabs />
+        <div className="flex flex-1 justify-end">
+          <UserMenu />
         </div>
-      </header>
-      <MobileBottomNav />
-    </>
+      </div>
+    </header>
   );
 }

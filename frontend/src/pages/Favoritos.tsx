@@ -7,11 +7,17 @@ import {
   Heart,
   Loader2,
   LogIn,
+  MoreVertical,
   Trash2,
 } from "lucide-react";
 import { usePaywall } from "@/lib/paywall";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarioPlan } from "@/components/CalendarioPlan";
+import { CalendarioPlan, PlanLeyenda } from "@/components/CalendarioPlan";
 import { Header } from "@/components/Header";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
@@ -42,12 +48,6 @@ function formatFecha(iso: string) {
     month: "2-digit",
     year: "numeric",
   });
-}
-
-function materiasResumen(fav: Favorite): string {
-  const nombres = fav.plan.opciones.map((o) => o.materia_nombre);
-  if (nombres.length === 0) return "Plan vacío";
-  return nombres.join(" · ");
 }
 
 function filtrosChips(fav: Favorite): string[] {
@@ -103,11 +103,11 @@ function FavoritoCard({
 
   return (
     <Card>
-      <CardHeader className="flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <CardHeader className="flex-row items-start justify-between gap-3">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex min-w-0 flex-1 items-start gap-3 text-left sm:items-center"
+          className="flex min-w-0 flex-1 items-start gap-3 text-left"
         >
           <ChevronDown
             className={
@@ -116,10 +116,8 @@ function FavoritoCard({
             }
           />
           <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-base">
-              {materiasResumen(fav)}
-            </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <PlanLeyenda plan={fav.plan} />
+            <p className="mt-2 text-xs text-muted-foreground">
               Guardado el {formatFecha(fav.created_at)}
             </p>
             {chips.length > 0 && (
@@ -136,24 +134,37 @@ function FavoritoCard({
             )}
           </div>
         </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(fav.id)}
-          disabled={deleting}
-          className="shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-auto"
-        >
-          {deleting ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Trash2 className="size-4" />
-          )}
-          Eliminar
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 text-muted-foreground"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-auto p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(fav.id)}
+              disabled={deleting}
+              className="w-full justify-start text-muted-foreground hover:text-destructive"
+            >
+              {deleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Eliminar
+            </Button>
+          </PopoverContent>
+        </Popover>
       </CardHeader>
       {expanded && (
         <CardContent>
-          <CalendarioPlan plan={fav.plan} />
+          <CalendarioPlan plan={fav.plan} showLeyenda={false} />
         </CardContent>
       )}
     </Card>
@@ -212,7 +223,7 @@ export function Favoritos() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container max-w-6xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
+      <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">
             Planes guardados

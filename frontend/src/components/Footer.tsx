@@ -1,6 +1,7 @@
 import { Headset, Instagram, Mail } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-function TikTokIcon({ className }: { className?: string }) {
+export function TikTokIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -13,48 +14,66 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
+export function ContactLinks({
+  orientation = "row",
+}: {
+  orientation?: "row" | "col";
+}) {
+  const vertical = orientation === "col";
+  return (
+    <div
+      className={cn(
+        "flex text-xs text-muted-foreground",
+        vertical ? "flex-col gap-4" : "flex-col items-center gap-3 sm:flex-row sm:justify-between"
+      )}
+    >
+      <div className={cn("flex", vertical ? "flex-col gap-3" : "items-center gap-4")}>
+        <a
+          href="mailto:planify.uni@gmail.com"
+          className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+        >
+          <Mail className="size-4" />
+          planify.uni@gmail.com
+        </a>
+        <a
+          href="mailto:planify.uni@gmail.com"
+          className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+        >
+          <Headset className="size-4" />
+          Ayuda
+        </a>
+      </div>
+      <div className="flex items-center gap-4">
+        <a
+          href="https://www.instagram.com/planify.uni/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram"
+          title="Instagram"
+          className="transition-colors hover:text-foreground"
+        >
+          <Instagram className="size-4" />
+        </a>
+        <a
+          href="https://www.tiktok.com/@planify.uni"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="TikTok"
+          title="TikTok"
+          className="transition-colors hover:text-foreground"
+        >
+          <TikTokIcon className="size-4" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card pb-20 sm:pb-0">
-      <div className="container flex flex-col items-center gap-3 py-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-        <div className="flex items-center gap-4">
-          <a
-            href="mailto:planify.uni@gmail.com"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-          >
-            <Mail className="size-4" />
-            planify.uni@gmail.com
-          </a>
-          <a
-            href="mailto:planify.uni@gmail.com"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-          >
-            <Headset className="size-4" />
-            Ayuda
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            href="https://www.instagram.com/planify.uni/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            title="Instagram"
-            className="transition-colors hover:text-foreground"
-          >
-            <Instagram className="size-4" />
-          </a>
-          <a
-            href="https://www.tiktok.com/@planify.uni"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="TikTok"
-            title="TikTok"
-            className="transition-colors hover:text-foreground"
-          >
-            <TikTokIcon className="size-4" />
-          </a>
-        </div>
+    <footer className="hidden border-t border-border bg-card sm:block">
+      <div className="container py-4">
+        <ContactLinks orientation="row" />
       </div>
     </footer>
   );

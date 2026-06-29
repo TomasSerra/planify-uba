@@ -46,6 +46,32 @@ interface CursoConContexto extends CursoEnPlan {
 interface Props {
   plan: Plan | null;
   compacto?: boolean;
+  showLeyenda?: boolean;
+}
+
+export function PlanLeyenda({ plan }: { plan: Plan }) {
+  return (
+    <div className="flex flex-wrap gap-2 sm:gap-3">
+      {plan.opciones.map((op, idx) => {
+        const palette = PALETTE[idx % PALETTE.length];
+        return (
+          <div
+            key={op.materia_codigo}
+            className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs"
+          >
+            <span className={`mt-0.5 size-3 shrink-0 rounded-full ${palette.bg}`} />
+            <div className="flex flex-col">
+              <span className="font-medium">{op.materia_nombre}</span>
+              <span className="text-muted-foreground">
+                cát {op.catedra_id}
+                {op.catedra_titular ? ` (${op.catedra_titular})` : ""}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // Paleta acorde al primario (variaciones de hue cercanas + neutros).
@@ -244,7 +270,11 @@ function CursoBloque({ curso, compacto, top, height }: CursoBloqueProps) {
   );
 }
 
-export function CalendarioPlan({ plan, compacto = false }: Props) {
+export function CalendarioPlan({
+  plan,
+  compacto = false,
+  showLeyenda = true,
+}: Props) {
   const horaMin = 7;
   const horaMax = 23;
   const PIXELS_PER_HOUR = compacto
@@ -402,24 +432,11 @@ export function CalendarioPlan({ plan, compacto = false }: Props) {
       </div>
 
       {/* Leyenda */}
-      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-        {plan.opciones.map((op, idx) => {
-          const palette = PALETTE[idx % PALETTE.length];
-          return (
-            <div
-              key={op.materia_codigo}
-              className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs"
-            >
-              <span className={`size-3 rounded-full ${palette.bg}`} />
-              <span className="font-medium">{op.materia_nombre}</span>
-              <span className="text-muted-foreground">
-                · cát {op.catedra_id}
-                {op.catedra_titular ? ` (${op.catedra_titular})` : ""}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {showLeyenda && (
+        <div className="mt-4">
+          <PlanLeyenda plan={plan} />
+        </div>
+      )}
     </div>
   );
 }

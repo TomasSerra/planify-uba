@@ -59,7 +59,9 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
+  const [rowHeight, setRowHeight] = useState(0);
   const [isLg, setIsLg] = useState(false);
 
   // Scroll al tope cada vez que cambia el query. En un useEffect (no en
@@ -78,6 +80,18 @@ export function MateriaSelector({ selected, onChange }: Props) {
     const ro = new ResizeObserver(() => setPopoverWidth(el.offsetWidth));
     ro.observe(el);
     setPopoverWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  // En mobile el popover baja desde el borde superior de la fila (debajo del
+  // título "Materias") tapando el botón. Como side="bottom" lo ancla al borde
+  // inferior de la fila, lo subimos con un sideOffset negativo = alto de la fila.
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setRowHeight(el.offsetHeight));
+    ro.observe(el);
+    setRowHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
 
@@ -143,51 +157,59 @@ export function MateriaSelector({ selected, onChange }: Props) {
     onChange(selected.filter((m) => m.codigo !== codigo));
   }
 
+  const triggerRow = (
+    <div
+      ref={rowRef}
+      className="flex shrink-0 flex-wrap items-center justify-between gap-2"
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 text-sm text-muted-foreground",
+          selected.length === 0 && "hidden sm:flex",
+        )}
+      >
+        {loading && selected.length === 0 ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <BookOpen className="size-4" />
+        )}
+        <span>
+          {loading && selected.length === 0
+            ? "Cargando materias…"
+            : selected.length === 0
+            ? "Ninguna materia seleccionada"
+            : `${selected.length} ${selected.length === 1 ? "materia" : "materias"}`}
+        </span>
+      </div>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className={cn(selected.length === 0 && "w-full sm:w-auto")}
+        >
+          {loading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Plus className="size-3.5" />
+          )}
+          Agregar materia
+        </Button>
+      </PopoverTrigger>
+    </div>
+  );
+
   return (
     <div ref={wrapperRef} className="flex flex-col gap-3 lg:h-full">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor asChild>
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-            <div
-              className={cn(
-                "flex items-center gap-2 text-sm text-muted-foreground",
-                selected.length === 0 && "hidden sm:flex",
-              )}
-            >
-              {loading && selected.length === 0 ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <BookOpen className="size-4" />
-              )}
-              <span>
-                {loading && selected.length === 0
-                  ? "Cargando materias…"
-                  : selected.length === 0
-                  ? "Ninguna materia seleccionada"
-                  : `${selected.length} ${selected.length === 1 ? "materia" : "materias"}`}
-              </span>
-            </div>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={loading}
-                className={cn(selected.length === 0 && "w-full sm:w-auto")}
-              >
-                {loading ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Plus className="size-3.5" />
-                )}
-                Agregar materia
-              </Button>
-            </PopoverTrigger>
-          </div>
-        </PopoverAnchor>
+        <PopoverAnchor asChild>{triggerRow}</PopoverAnchor>
+        {/* Desktop: cae por debajo de la fila. Mobile: sube con offset negativo
+            (= alto de la fila) para desplegarse desde el borde superior de la
+            fila, debajo del título "Materias" y tapando el botón. */}
         <PopoverContent
           className="p-0"
           side="bottom"
-          sideOffset={8}
+          sideOffset={isLg ? 8 : -rowHeight}
           avoidCollisions={false}
           align={isLg ? "end" : "center"}
           style={

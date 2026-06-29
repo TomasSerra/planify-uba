@@ -54,6 +54,7 @@ import {
   type PlanHistoryEntry,
   type PlanResponse,
 } from "@/lib/types";
+import { useVisualViewportStick } from "@/lib/useVisualViewportStick";
 
 interface SeleccionConNombre extends MateriaSeleccionada {
   nombre: string;
@@ -815,6 +816,57 @@ export function Home() {
       .map((c) => materias.find((m) => m.codigo === c)?.nombre ?? `#${c}`)
       .join(", ");
 
+  const generarBarRef = useVisualViewportStick<HTMLDivElement>();
+
+  const limpiarBtn = resultado !== null && (
+    <Button
+      size="lg"
+      variant="outline"
+      onClick={limpiarTodo}
+      disabled={loading}
+    >
+      <BrushCleaning className="size-4" />
+      Limpiar Todo
+    </Button>
+  );
+
+  const generarBtn = (
+    <Button
+      size="lg"
+      onClick={proFiltersBlocked ? () => openPaywall("filtros") : generar}
+      disabled={
+        loading ||
+        materias.length === 0 ||
+        diasPermitidos.length === 0 ||
+        sinCambios
+      }
+      title={
+        proFiltersBlocked
+          ? "El plan actual usa filtros Pro. Hacete Pro para generarlo."
+          : undefined
+      }
+      className={
+        "flex-1 sm:flex-none " +
+        (proFiltersBlocked
+          ? "bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
+          : "bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90")
+      }
+    >
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : proFiltersBlocked ? (
+        <Gem className="size-4" />
+      ) : (
+        <Sparkles className="size-4" />
+      )}
+      {loading
+        ? "Generando..."
+        : proFiltersBlocked
+        ? "Hacete Pro para generar"
+        : "Generar planes"}
+    </Button>
+  );
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
@@ -910,7 +962,7 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className={"flex gap-3 " + (resultado === null ? "mt-auto lg:mt-0" : "")}>
+          <div className={"hidden gap-3 sm:flex " + (resultado === null ? "mt-auto lg:mt-0" : "")}>
             <div className="hidden size-10 shrink-0 lg:block" aria-hidden />
             <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -924,50 +976,8 @@ export function Home() {
                 )}
               </p>
               <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
-                {resultado !== null && (
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={limpiarTodo}
-                    disabled={loading}
-                  >
-                    <BrushCleaning className="size-4" />
-                    Limpiar Todo
-                  </Button>
-                )}
-                <Button
-                  size="lg"
-                  onClick={proFiltersBlocked ? () => openPaywall("filtros") : generar}
-                  disabled={
-                    loading ||
-                    materias.length === 0 ||
-                    diasPermitidos.length === 0 ||
-                    sinCambios
-                  }
-                  title={
-                    proFiltersBlocked
-                      ? "El plan actual usa filtros Pro. Hacete Pro para generarlo."
-                      : undefined
-                  }
-                  className={
-                    proFiltersBlocked
-                      ? "bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
-                      : "bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90"
-                  }
-                >
-                  {loading ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : proFiltersBlocked ? (
-                    <Gem className="size-4" />
-                  ) : (
-                    <Sparkles className="size-4" />
-                  )}
-                  {loading
-                    ? "Generando..."
-                    : proFiltersBlocked
-                    ? "Hacete Pro para generar"
-                    : "Generar planes"}
-                </Button>
+                {limpiarBtn}
+                {generarBtn}
               </div>
             </div>
           </div>
@@ -1075,6 +1085,17 @@ export function Home() {
           </Card>
         )}
       </main>
+
+      <div
+        ref={generarBarRef}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="container flex items-center gap-2 px-4 py-3">
+          {limpiarBtn}
+          {generarBtn}
+        </div>
+      </div>
     </div>
   );
 }
