@@ -64,12 +64,18 @@ export function HistorialPopover({
         <button
           type="button"
           aria-label="Historial de planes generados"
-          className="flex size-10 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-white shadow-sm transition-colors hover:bg-accent max-sm:min-h-[44px] max-sm:min-w-[44px]"
+          className="flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-lg border border-border bg-white px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent max-sm:min-h-[44px] lg:w-10 lg:px-0"
         >
           <Clock className="size-4" />
+          <span className="lg:hidden">Historial</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-2 sm:w-[20rem]">
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={8}
+        className="max-w-[calc(100vw-2rem)] p-2 max-sm:w-[calc(100vw-2rem)] sm:w-[20rem]"
+      >
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Historial · últimos {entries.length}
         </div>

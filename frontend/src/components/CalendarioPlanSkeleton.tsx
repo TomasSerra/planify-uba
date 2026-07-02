@@ -34,7 +34,7 @@ export function CalendarioPlanSkeleton({ compacto = false }: Props) {
 
   return (
     <div>
-      <div className="overflow-x-auto overflow-y-clip">
+      <div className="-mx-6 overflow-x-auto overflow-y-clip px-6 sm:mx-0 sm:px-0">
         <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
           <div className={cn("grid border-b border-border", gridCols)}>
             <div className="p-3" />

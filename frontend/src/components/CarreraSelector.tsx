@@ -24,7 +24,7 @@ export function CarreraSelector() {
   if (isLoading || !carreras) {
     return (
       <div className="flex w-full flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted-foreground">
+        <span className="text-xs font-medium text-foreground">
           Carrera
         </span>
         <Skeleton className="h-10 w-full rounded-lg" />
@@ -34,7 +34,7 @@ export function CarreraSelector() {
 
   return (
     <div className="flex w-full flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">Carrera</span>
+      <span className="text-xs font-medium text-foreground">Carrera</span>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button

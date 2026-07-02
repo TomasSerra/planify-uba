@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, BookOpen, Loader2 } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Popover,
   PopoverAnchor,
@@ -53,6 +59,7 @@ function filtrarMateria(value: string, search: string): number {
 export function MateriaSelector({ selected, onChange }: Props) {
   const { carrera } = useCareer();
   const [open, setOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [materias, setMaterias] = useState<MateriaListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +150,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       ...selected,
     ]);
     setOpen(false);
+    setDrawerOpen(false);
   }
 
   function update(codigo: number, patch: Partial<MateriaSeleccionada>) {
@@ -157,6 +165,62 @@ export function MateriaSelector({ selected, onChange }: Props) {
     onChange(selected.filter((m) => m.codigo !== codigo));
   }
 
+  const addButtonContent = loading ? (
+    <Loader2 className="size-3.5 animate-spin" />
+  ) : (
+    <Plus className="size-3.5" />
+  );
+
+  const materiasCommand = (listClassName?: string, drawer = false) => (
+    <Command
+      shouldFilter
+      filter={filtrarMateria}
+      className={cn(
+        "rounded-none sm:rounded-lg",
+        drawer &&
+          "[&_[cmdk-input-wrapper]]:mb-2 [&_[cmdk-input-wrapper]]:ml-4 [&_[cmdk-input-wrapper]]:mr-[4.25rem] [&_[cmdk-input-wrapper]]:mt-4 [&_[cmdk-input-wrapper]]:h-11 [&_[cmdk-input-wrapper]]:rounded-full [&_[cmdk-input-wrapper]]:border [&_[cmdk-input-wrapper]]:border-input [&_[cmdk-input-wrapper]]:bg-white [&_[cmdk-input-wrapper]]:pr-3"
+      )}
+    >
+      <CommandInput
+        placeholder="Buscar materia..."
+        className="pr-12 sm:pr-0"
+        onValueChange={setQuery}
+      />
+      <CommandList ref={listRef} className={listClassName}>
+        {loading && (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            Cargando materias...
+          </div>
+        )}
+        {error && (
+          <div className="py-6 text-center text-sm text-destructive">
+            {error}
+          </div>
+        )}
+        {!loading && !error && (
+          <>
+            <CommandEmpty>No se encontraron materias.</CommandEmpty>
+            <CommandGroup>
+              {disponibles.map((m) => (
+                <CommandItem
+                  key={m.codigo}
+                  value={`${m.nombre} ${m.codigo}`}
+                  onSelect={() => add(m)}
+                >
+                  <span className="line-clamp-2 flex-1">{m.nombre}</span>
+                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                    {m.cant_catedras}{" "}
+                    {m.cant_catedras === 1 ? "cát." : "cáts."}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </Command>
+  );
+
   const triggerRow = (
     <div
       ref={rowRef}
@@ -168,10 +232,8 @@ export function MateriaSelector({ selected, onChange }: Props) {
           selected.length === 0 && "hidden sm:flex",
         )}
       >
-        {loading && selected.length === 0 ? (
+        {loading && selected.length === 0 && (
           <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <BookOpen className="size-4" />
         )}
         <span>
           {loading && selected.length === 0
@@ -186,78 +248,69 @@ export function MateriaSelector({ selected, onChange }: Props) {
           variant="outline"
           size="sm"
           disabled={loading}
-          className={cn(selected.length === 0 && "w-full sm:w-auto")}
-        >
-          {loading ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Plus className="size-3.5" />
+          className={cn(
+            "hidden sm:inline-flex",
+            selected.length === 0 && "sm:w-auto"
           )}
+        >
+          {addButtonContent}
           Agregar materia
         </Button>
       </PopoverTrigger>
+      <DrawerTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className={cn("sm:hidden", selected.length === 0 && "w-full")}
+        >
+          {addButtonContent}
+          Agregar materia
+        </Button>
+      </DrawerTrigger>
     </div>
   );
 
   return (
     <div ref={wrapperRef} className="flex flex-col gap-3 lg:h-full">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor asChild>{triggerRow}</PopoverAnchor>
-        {/* Desktop: cae por debajo de la fila. Mobile: sube con offset negativo
-            (= alto de la fila) para desplegarse desde el borde superior de la
-            fila, debajo del título "Materias" y tapando el botón. */}
-        <PopoverContent
-          className="p-0"
-          side="bottom"
-          sideOffset={isLg ? 8 : -rowHeight}
-          avoidCollisions={false}
-          align={isLg ? "end" : "center"}
-          style={
-            isLg && popoverWidth
-              ? { width: popoverWidth }
-              : { width: "min(520px, calc(100vw - 2rem))" }
-          }
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverAnchor asChild>{triggerRow}</PopoverAnchor>
+          <PopoverContent
+            className="hidden p-0 sm:block"
+            side="bottom"
+            sideOffset={isLg ? 8 : -rowHeight}
+            avoidCollisions={false}
+            align={isLg ? "end" : "center"}
+            style={
+              isLg && popoverWidth
+                ? { width: popoverWidth }
+                : { width: "min(520px, calc(100vw - 2rem))" }
+            }
+          >
+            {materiasCommand()}
+          </PopoverContent>
+        </Popover>
+        <DrawerContent
+          showHandle={false}
+          className="h-[100dvh] overflow-hidden rounded-t-2xl border-0"
         >
-          <Command shouldFilter filter={filtrarMateria}>
-            <CommandInput
-              placeholder="Buscar materia..."
-              onValueChange={setQuery}
-            />
-            <CommandList ref={listRef}>
-              {loading && (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Cargando materias...
-                </div>
-              )}
-              {error && (
-                <div className="py-6 text-center text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-              {!loading && !error && (
-                <>
-                  <CommandEmpty>No se encontraron materias.</CommandEmpty>
-                  <CommandGroup>
-                    {disponibles.map((m) => (
-                      <CommandItem
-                        key={m.codigo}
-                        value={`${m.nombre} ${m.codigo}`}
-                        onSelect={() => add(m)}
-                      >
-                        <span className="line-clamp-2 flex-1">{m.nombre}</span>
-                        <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                          {m.cant_catedras}{" "}
-                          {m.cant_catedras === 1 ? "cát." : "cáts."}
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {materiasCommand("max-h-none flex-1 pb-4", true)}
+            <DrawerClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Cerrar"
+                className="absolute right-4 top-4 size-11 rounded-full border border-input bg-white"
+              >
+                <X className="size-4" />
+              </Button>
+            </DrawerClose>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {selected.length > 0 && (
         <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">

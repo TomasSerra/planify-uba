@@ -10,6 +10,7 @@ import {
   Heart,
   ChevronDown,
   Filter,
+  BookOpen,
 } from "lucide-react";
 import mpIcon from "@/assets/mp-icon.png";
 import { useAuth } from "@/lib/useAuth";
@@ -391,6 +392,7 @@ export function Home() {
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
   const [maxBacheHoras, setMaxBacheHoras] = useState<number | null>(null);
   const [soloCupos, setSoloCupos] = useState<boolean>(false);
+  const [materiasOpen, setMateriasOpen] = useState(true);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [calendarioCompacto, setCalendarioCompacto] = useState<boolean>(
     () => localStorage.getItem("calendarioCompacto") === "1"
@@ -716,6 +718,8 @@ export function Home() {
   }
 
   function generar() {
+    setMateriasOpen(false);
+    setFiltrosOpen(false);
     return runGenerate(
       materias,
       diasPermitidos,
@@ -876,7 +880,7 @@ export function Home() {
       />
       <Header />
 
-      <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pb-8 lg:block">
+      <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-4 sm:px-6 sm:pb-8 lg:block">
         <div
           className={
             "flex flex-col gap-3 lg:grid lg:gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto] " +
@@ -884,15 +888,41 @@ export function Home() {
           }
         >
           <div className="flex shrink-0 flex-col gap-3 lg:flex-row">
-            <HistorialPopover onRestore={restoreFromHistory} />
+            <div className="flex justify-end">
+              <HistorialPopover onRestore={restoreFromHistory} />
+            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               {!isAuthenticated && <CarreraSelector />}
               <div className="relative flex-1">
                 <Card className="flex flex-col lg:absolute lg:inset-0">
-                  <CardHeader>
-                    <CardTitle>Materias</CardTitle>
+                  <CardHeader className={materiasOpen ? undefined : "pb-6 sm:pb-4"}>
+                    <button
+                      type="button"
+                      onClick={() => setMateriasOpen((v) => !v)}
+                      className="flex w-full items-center gap-2 text-left sm:pointer-events-none sm:cursor-default"
+                    >
+                      <ChevronDown
+                        className={
+                          "size-5 shrink-0 text-muted-foreground transition-transform sm:hidden " +
+                          (materiasOpen ? "rotate-180" : "")
+                        }
+                      />
+                      <BookOpen className="size-4 shrink-0 text-foreground sm:hidden" />
+                      <CardTitle className="min-w-0 flex-1">Materias</CardTitle>
+                      {!materiasOpen && (
+                        <span className="shrink-0 text-sm text-muted-foreground sm:hidden">
+                          {materias.length}{" "}
+                          {materias.length === 1 ? "materia" : "materias"}
+                        </span>
+                      )}
+                    </button>
                   </CardHeader>
-                  <CardContent className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+                  <CardContent
+                    className={
+                      (materiasOpen ? "flex" : "hidden sm:flex") +
+                      " flex-col gap-4 lg:min-h-0 lg:flex-1"
+                    }
+                  >
                     <MateriaSelector selected={materias} onChange={setMaterias} />
                   </CardContent>
                 </Card>
@@ -1016,7 +1046,7 @@ export function Home() {
         )}
 
         {loading && (
-          <Card ref={calendarioRef}>
+          <Card ref={calendarioRef} className="-mx-4 rounded-none sm:mx-0 sm:rounded-2xl">
             <CardHeader>
               <CardTitle>Calendario</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -1030,8 +1060,8 @@ export function Home() {
         )}
 
         {!loading && resultado && resultado.planes.length > 0 && (
-          <Card ref={calendarioRef}>
-            <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Card ref={calendarioRef} className="-mx-4 rounded-none sm:mx-0 sm:rounded-2xl">
+            <CardHeader className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Calendario</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1039,7 +1069,7 @@ export function Home() {
                   {resultado.planes.length === 1 ? "" : "es"} sin solapamientos
                 </p>
               </div>
-              <div className="flex justify-center sm:flex-1">
+              <div className="order-3 flex w-full justify-center sm:order-none sm:flex-1">
                 <PlanNavigator
                   index={planIdx}
                   total={resultado.planes.length}
@@ -1055,15 +1085,7 @@ export function Home() {
                   onChange={setPlanIdx}
                 />
               </div>
-              <div className="flex items-center gap-3">
-                {planActual && lastGeneratedFilters && (
-                  <SaveFavoriteButton
-                    plan={planActual}
-                    filters={lastGeneratedFilters}
-                    isPaid={isPaid}
-                    onLockedClick={() => openPaywall("favoritos")}
-                  />
-                )}
+              <div className="order-2 flex w-full items-center justify-between gap-3 sm:order-none sm:w-auto sm:justify-start">
                 <div className="flex items-center gap-2">
                   <Label
                     htmlFor="compacto-switch"
@@ -1077,6 +1099,14 @@ export function Home() {
                     onCheckedChange={setCalendarioCompacto}
                   />
                 </div>
+                {planActual && lastGeneratedFilters && (
+                  <SaveFavoriteButton
+                    plan={planActual}
+                    filters={lastGeneratedFilters}
+                    isPaid={isPaid}
+                    onLockedClick={() => openPaywall("favoritos")}
+                  />
+                )}
               </div>
             </CardHeader>
             <CardContent>
