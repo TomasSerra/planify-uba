@@ -70,6 +70,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
   const [rowHeight, setRowHeight] = useState(0);
   const [isLg, setIsLg] = useState(false);
+  const drawerInputRef = useRef<HTMLInputElement>(null);
 
   // Scroll al tope cada vez que cambia el query. En un useEffect (no en
   // onValueChange) para correr DESPUÉS de que cmdk filtró y reordenó.
@@ -109,6 +110,15 @@ export function MateriaSelector({ selected, onChange }: Props) {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+
+    const id = window.requestAnimationFrame(() => {
+      drawerInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [drawerOpen]);
 
   useEffect(() => {
     // Esperar a tener carrera (usuario logueado: hasta que cargue el profile).
@@ -182,8 +192,9 @@ export function MateriaSelector({ selected, onChange }: Props) {
       )}
     >
       <CommandInput
+        ref={drawer ? drawerInputRef : undefined}
         placeholder="Buscar materia..."
-        className="pr-12 sm:pr-0"
+        className={cn("pr-12 sm:pr-0", drawer && "text-base")}
         onValueChange={setQuery}
       />
       <CommandList ref={listRef} className={listClassName}>
@@ -293,7 +304,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
         </Popover>
         <DrawerContent
           showHandle={false}
-          className="h-[100dvh] overflow-hidden rounded-t-2xl border-0"
+          className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] overflow-hidden rounded-t-2xl border-0"
         >
           <div className="relative flex min-h-0 flex-1 flex-col">
             {materiasCommand("max-h-none flex-1 pb-4", true)}
