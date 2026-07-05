@@ -13,6 +13,9 @@ export default {
       screens: { "2xl": "1280px" },
     },
     extend: {
+      screens: {
+        wide: "821px",
+      },
       fontFamily: {
         sans: [
           "Montserrat",

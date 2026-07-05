@@ -79,7 +79,7 @@ function Tabs() {
   const { pathname } = useLocation();
   const TABS = useTabs();
   return (
-    <nav className="hidden items-center gap-4 sm:flex">
+    <nav className="hidden items-center gap-4 wide:flex">
       {TABS.map(({ to, label, icon: Icon }) => {
         const active = pathname === to;
         return (
@@ -116,7 +116,7 @@ function MobileMenu() {
         <button
           type="button"
           aria-label="Abrir menú"
-          className="flex size-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent sm:hidden"
+          className="flex size-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent wide:hidden"
         >
           <Menu className="size-6" />
         </button>
@@ -128,7 +128,11 @@ function MobileMenu() {
       >
         <div className="flex items-center border-b border-border px-4 py-4">
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <img src="/logo.png" alt="Horarios" className="h-9 w-auto" />
+          <img
+            src="/logo.png"
+            alt="Horarios"
+            className="h-9 w-auto max-w-full shrink-0 object-contain"
+          />
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
@@ -177,7 +181,7 @@ function PayChip() {
       className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
     >
       <Gem className="size-4" />
-      <span className="hidden sm:inline">Hacete Pro</span>
+      <span className="hidden wide:inline">Hacete Pro</span>
     </Button>
   );
 }
@@ -206,7 +210,7 @@ function UserMenu() {
         <PayChip />
         <Button variant="outline" size="sm" onClick={() => openLogin("signin")}>
           <LogIn className="size-4" />
-          <span className="hidden sm:inline">Iniciar sesión</span>
+          <span className="hidden wide:inline">Iniciar sesión</span>
         </Button>
       </div>
     );
@@ -223,9 +227,9 @@ function UserMenu() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent sm:gap-2 sm:rounded-2xl sm:border sm:border-border sm:bg-white sm:py-1 sm:pl-3 sm:pr-1"
+            className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent wide:gap-2 wide:rounded-2xl wide:border wide:border-border wide:bg-white wide:py-1 wide:pl-3 wide:pr-1"
           >
-            <div className="hidden flex-col leading-tight sm:flex text-left">
+            <div className="hidden flex-col leading-tight wide:flex text-left">
               <div className="flex max-w-[12rem] flex-col">
                 <span className="truncate text-xs text-foreground">{email}</span>
                 {carreraNombre && (
@@ -336,10 +340,14 @@ function CambiarCarreraButton({ onClicked }: { onClicked: () => void }) {
 export function Header() {
   return (
     <header className="border-b border-border bg-card">
-      <div className="container flex items-center gap-2 py-4 sm:gap-4">
+      <div className="container flex items-center gap-2 py-4 wide:gap-4">
         <MobileMenu />
-        <Link to="/" className="flex flex-1 items-center">
-          <img src="/logo.png" alt="Horarios" className="h-9 w-auto sm:h-12" />
+        <Link to="/" className="flex flex-none items-center">
+          <img
+            src="/logo.png"
+            alt="Horarios"
+            className="h-9 w-auto shrink-0 object-contain wide:h-12"
+          />
         </Link>
         <Tabs />
         <div className="flex flex-1 justify-end">

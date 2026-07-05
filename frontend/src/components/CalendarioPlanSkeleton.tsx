@@ -30,12 +30,12 @@ export function CalendarioPlanSkeleton({ compacto = false }: Props) {
   const height = pxPerHour * HORAS;
   const gridCols = compacto
     ? "grid-cols-[72px_repeat(6,1fr)]"
-    : "grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]";
+    : "grid-cols-[40px_repeat(6,1fr)] wide:grid-cols-[64px_repeat(6,1fr)]";
 
   return (
     <div>
-      <div className="-mx-6 overflow-x-auto overflow-y-clip px-6 sm:mx-0 sm:px-0">
-        <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
+      <div className="-mx-6 overflow-x-auto overflow-y-clip px-6 wide:mx-0 wide:px-0">
+        <div className="min-w-[560px] rounded-2xl border border-border bg-card wide:min-w-[760px]">
           <div className={cn("grid border-b border-border", gridCols)}>
             <div className="p-3" />
             {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -79,7 +79,7 @@ export function CalendarioPlanSkeleton({ compacto = false }: Props) {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
+      <div className="mt-4 flex flex-wrap gap-2 wide:gap-3">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-7 w-32 rounded-lg" />
         ))}

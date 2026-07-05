@@ -69,7 +69,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
   const [rowHeight, setRowHeight] = useState(0);
-  const [isLg, setIsLg] = useState(false);
+  const [isWide, setIsWide] = useState(false);
   const drawerInputRef = useRef<HTMLInputElement>(null);
 
   // Scroll al tope cada vez que cambia el query. En un useEffect (no en
@@ -104,8 +104,8 @@ export function MateriaSelector({ selected, onChange }: Props) {
   }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsLg(mq.matches);
+    const mq = window.matchMedia("(min-width: 821px)");
+    const update = () => setIsWide(mq.matches);
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
@@ -186,7 +186,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       shouldFilter
       filter={filtrarMateria}
       className={cn(
-        "rounded-none sm:rounded-lg",
+        "rounded-none wide:rounded-lg",
         drawer &&
           "[&_[cmdk-input-wrapper]]:mb-2 [&_[cmdk-input-wrapper]]:ml-4 [&_[cmdk-input-wrapper]]:mr-[4.25rem] [&_[cmdk-input-wrapper]]:mt-4 [&_[cmdk-input-wrapper]]:h-11 [&_[cmdk-input-wrapper]]:rounded-full [&_[cmdk-input-wrapper]]:border [&_[cmdk-input-wrapper]]:border-input [&_[cmdk-input-wrapper]]:bg-white [&_[cmdk-input-wrapper]]:pr-3"
       )}
@@ -194,7 +194,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       <CommandInput
         ref={drawer ? drawerInputRef : undefined}
         placeholder="Buscar materia..."
-        className={cn("pr-12 sm:pr-0", drawer && "text-base")}
+        className={cn("pr-12 wide:pr-0", drawer && "text-base")}
         onValueChange={setQuery}
       />
       <CommandList ref={listRef} className={listClassName}>
@@ -240,7 +240,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       <div
         className={cn(
           "flex items-center gap-2 text-sm text-muted-foreground",
-          selected.length === 0 && "hidden sm:flex",
+          selected.length === 0 && "hidden wide:flex",
         )}
       >
         {loading && selected.length === 0 && (
@@ -260,8 +260,8 @@ export function MateriaSelector({ selected, onChange }: Props) {
           size="sm"
           disabled={loading}
           className={cn(
-            "hidden sm:inline-flex",
-            selected.length === 0 && "sm:w-auto"
+            "hidden wide:inline-flex",
+            selected.length === 0 && "wide:w-auto"
           )}
         >
           {addButtonContent}
@@ -273,7 +273,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
           variant="outline"
           size="sm"
           disabled={loading}
-          className={cn("sm:hidden", selected.length === 0 && "w-full")}
+          className={cn("wide:hidden", selected.length === 0 && "w-full")}
         >
           {addButtonContent}
           Agregar materia
@@ -283,18 +283,18 @@ export function MateriaSelector({ selected, onChange }: Props) {
   );
 
   return (
-    <div ref={wrapperRef} className="flex flex-col gap-3 lg:h-full">
+    <div ref={wrapperRef} className="flex flex-col gap-3 wide:h-full">
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverAnchor asChild>{triggerRow}</PopoverAnchor>
           <PopoverContent
-            className="hidden p-0 sm:block"
+            className="hidden p-0 wide:block"
             side="bottom"
-            sideOffset={isLg ? 8 : -rowHeight}
+            sideOffset={isWide ? 8 : -rowHeight}
             avoidCollisions={false}
-            align={isLg ? "end" : "center"}
+            align={isWide ? "end" : "center"}
             style={
-              isLg && popoverWidth
+              isWide && popoverWidth
                 ? { width: popoverWidth }
                 : { width: "min(520px, calc(100vw - 2rem))" }
             }
@@ -324,7 +324,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
       </Drawer>
 
       {selected.length > 0 && (
-        <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div className="space-y-2 wide:min-h-0 wide:flex-1 wide:overflow-y-auto">
           {selected.map((m) => (
             <MateriaCard
               key={m.codigo}

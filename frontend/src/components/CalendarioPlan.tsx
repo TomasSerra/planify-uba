@@ -51,7 +51,7 @@ interface Props {
 
 export function PlanLeyenda({ plan }: { plan: Plan }) {
   return (
-    <div className="flex flex-wrap gap-2 sm:gap-3">
+    <div className="flex flex-wrap gap-2 wide:gap-3">
       {plan.opciones.map((op, idx) => {
         const palette = PALETTE[idx % PALETTE.length];
         return (
@@ -336,12 +336,12 @@ export function CalendarioPlan({
   const minBloque = compacto ? 14 : 28;
   const gridCols = compacto
     ? "grid-cols-[72px_repeat(6,1fr)]"
-    : "grid-cols-[40px_repeat(6,1fr)] sm:grid-cols-[64px_repeat(6,1fr)]";
+    : "grid-cols-[40px_repeat(6,1fr)] wide:grid-cols-[64px_repeat(6,1fr)]";
 
   return (
     <div>
-      <div className="-mx-6 overflow-x-auto overflow-y-clip px-6 sm:mx-0 sm:px-0">
-        <div className="min-w-[560px] rounded-2xl border border-border bg-card sm:min-w-[760px]">
+      <div className="-mx-6 overflow-x-auto overflow-y-clip px-6 wide:mx-0 wide:px-0">
+        <div className="min-w-[560px] rounded-2xl border border-border bg-card wide:min-w-[760px]">
         <div className={cn("grid border-b border-border", gridCols)}>
           <div className="p-3 text-xs font-medium text-muted-foreground" />
           {DIAS_DISPLAY.map((d) => (
@@ -380,7 +380,7 @@ export function CalendarioPlan({
                 ).map((h, i) => (
                   <div
                     key={h}
-                    className="absolute right-0 flex -translate-y-1/2 justify-end pr-1 text-[10px] font-medium text-muted-foreground sm:pr-2"
+                    className="absolute right-0 flex -translate-y-1/2 justify-end pr-1 text-[10px] font-medium text-muted-foreground wide:pr-2"
                     style={{ top: i * PIXELS_PER_HOUR }}
                   >
                     {String(h).padStart(2, "0")}:00

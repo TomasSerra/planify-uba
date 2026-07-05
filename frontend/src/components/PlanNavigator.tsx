@@ -22,7 +22,7 @@ export function PlanNavigator({
   const isLast = index === total - 1;
   const lockedAtEnd = !!freemiumLocked && isLast;
   return (
-    <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 sm:flex sm:w-auto">
+    <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 wide:flex wide:w-auto">
       <Button
         variant="outline"
         size="icon"

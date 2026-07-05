@@ -850,7 +850,7 @@ export function Home() {
           : undefined
       }
       className={
-        "flex-1 sm:flex-none " +
+        "flex-1 wide:flex-none " +
         (proFiltersBlocked
           ? "bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
           : "bg-gradient-to-r from-primary to-[#C72A88] text-primary-foreground hover:opacity-90")
@@ -880,37 +880,37 @@ export function Home() {
       />
       <Header />
 
-      <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-4 sm:px-6 sm:pb-8 lg:block">
+      <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-4 sm:px-6 wide:pb-8 wide:block">
         <div
           className={
-            "flex flex-col gap-3 lg:grid lg:gap-6 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[1fr_auto] " +
+            "flex flex-col gap-3 wide:grid wide:gap-6 wide:grid-cols-[1.1fr_1fr] wide:grid-rows-[1fr_auto] " +
             (resultado === null ? "flex-1" : "")
           }
         >
-          <div className="flex shrink-0 flex-col gap-3 lg:flex-row">
+          <div className="flex shrink-0 flex-col gap-3 wide:flex-row">
             <div className="flex justify-end">
               <HistorialPopover onRestore={restoreFromHistory} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               {!isAuthenticated && <CarreraSelector />}
               <div className="relative flex-1">
-                <Card className="flex flex-col lg:absolute lg:inset-0">
-                  <CardHeader className={materiasOpen ? undefined : "pb-6 sm:pb-4"}>
+                <Card className="flex flex-col wide:absolute wide:inset-0">
+                  <CardHeader className={materiasOpen ? undefined : "pb-6 wide:pb-4"}>
                     <button
                       type="button"
                       onClick={() => setMateriasOpen((v) => !v)}
-                      className="flex w-full items-center gap-2 text-left sm:pointer-events-none sm:cursor-default"
+                      className="flex w-full items-center gap-2 text-left wide:pointer-events-none wide:cursor-default"
                     >
                       <ChevronDown
                         className={
-                          "size-5 shrink-0 text-muted-foreground transition-transform sm:hidden " +
+                          "size-5 shrink-0 text-muted-foreground transition-transform wide:hidden " +
                           (materiasOpen ? "rotate-180" : "")
                         }
                       />
-                      <BookOpen className="size-4 shrink-0 text-foreground sm:hidden" />
+                      <BookOpen className="size-4 shrink-0 text-foreground wide:hidden" />
                       <CardTitle className="min-w-0 flex-1">Materias</CardTitle>
                       {!materiasOpen && (
-                        <span className="shrink-0 text-sm text-muted-foreground sm:hidden">
+                        <span className="shrink-0 text-sm text-muted-foreground wide:hidden">
                           {materias.length}{" "}
                           {materias.length === 1 ? "materia" : "materias"}
                         </span>
@@ -919,8 +919,8 @@ export function Home() {
                   </CardHeader>
                   <CardContent
                     className={
-                      (materiasOpen ? "flex" : "hidden sm:flex") +
-                      " flex-col gap-4 lg:min-h-0 lg:flex-1"
+                      (materiasOpen ? "flex" : "hidden wide:flex") +
+                      " flex-col gap-4 wide:min-h-0 wide:flex-1"
                     }
                   >
                     <MateriaSelector selected={materias} onChange={setMaterias} />
@@ -930,21 +930,21 @@ export function Home() {
             </div>
           </div>
 
-          <Card className="flex min-h-0 flex-col overflow-hidden lg:row-span-2 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-9rem)]">
-            <CardHeader className={filtrosOpen ? undefined : "pb-6 lg:pb-4"}>
+          <Card className="flex min-h-0 flex-col overflow-hidden wide:row-span-2 wide:sticky wide:top-6 wide:max-h-[calc(100dvh-9rem)]">
+            <CardHeader className={filtrosOpen ? undefined : "pb-6 wide:pb-4"}>
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setFiltrosOpen((v) => !v)}
-                  className="flex flex-1 items-center gap-2 text-left lg:cursor-default lg:pointer-events-none"
+                  className="flex flex-1 items-center gap-2 text-left wide:cursor-default wide:pointer-events-none"
                 >
                   <ChevronDown
                     className={
-                      "size-5 shrink-0 text-muted-foreground transition-transform lg:hidden " +
+                      "size-5 shrink-0 text-muted-foreground transition-transform wide:hidden " +
                       (filtrosOpen ? "rotate-180" : "")
                     }
                   />
-                  <Filter className="size-4 shrink-0 text-foreground lg:hidden" />
+                  <Filter className="size-4 shrink-0 text-foreground wide:hidden" />
                   <CardTitle>Filtros</CardTitle>
                 </button>
                 {(diasPermitidos.length !== ALL_DIAS.length ||
@@ -970,7 +970,7 @@ export function Home() {
             </CardHeader>
             <CardContent
               className={
-                (filtrosOpen ? "flex" : "hidden lg:flex") +
+                (filtrosOpen ? "flex" : "hidden wide:flex") +
                 " min-h-0 flex-1 flex-col"
               }
             >
@@ -992,9 +992,9 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className={"hidden gap-3 sm:flex " + (resultado === null ? "mt-auto lg:mt-0" : "")}>
-            <div className="hidden size-10 shrink-0 lg:block" aria-hidden />
-            <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className={"hidden gap-3 wide:flex " + (resultado === null ? "mt-auto wide:mt-0" : "")}>
+            <div className="hidden size-10 shrink-0 wide:block" aria-hidden />
+            <div className="flex flex-1 flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:justify-between wide:gap-4">
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 {materias.length === 0 ? (
                   <>
@@ -1005,7 +1005,7 @@ export function Home() {
                   `Listo para generar planes con ${materias.length} ${materias.length === 1 ? "materia" : "materias"}.`
                 )}
               </p>
-              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:gap-2">
                 {limpiarBtn}
                 {generarBtn}
               </div>
@@ -1046,7 +1046,7 @@ export function Home() {
         )}
 
         {loading && (
-          <Card ref={calendarioRef} className="-mx-4 rounded-none sm:mx-0 sm:rounded-2xl">
+          <Card ref={calendarioRef} className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl">
             <CardHeader>
               <CardTitle>Calendario</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -1060,8 +1060,8 @@ export function Home() {
         )}
 
         {!loading && resultado && resultado.planes.length > 0 && (
-          <Card ref={calendarioRef} className="-mx-4 rounded-none sm:mx-0 sm:rounded-2xl">
-            <CardHeader className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Card ref={calendarioRef} className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl">
+            <CardHeader className="flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:justify-between">
               <div>
                 <CardTitle>Calendario</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1069,7 +1069,7 @@ export function Home() {
                   {resultado.planes.length === 1 ? "" : "es"} sin solapamientos
                 </p>
               </div>
-              <div className="order-3 flex w-full justify-center sm:order-none sm:flex-1">
+              <div className="order-3 flex w-full justify-center wide:order-none wide:flex-1">
                 <PlanNavigator
                   index={planIdx}
                   total={resultado.planes.length}
@@ -1085,7 +1085,7 @@ export function Home() {
                   onChange={setPlanIdx}
                 />
               </div>
-              <div className="order-2 flex w-full items-center justify-between gap-3 sm:order-none sm:w-auto sm:justify-start">
+              <div className="order-2 flex w-full items-center justify-between gap-3 wide:order-none wide:w-auto wide:justify-start">
                 <div className="flex items-center gap-2">
                   <Label
                     htmlFor="compacto-switch"
@@ -1118,7 +1118,7 @@ export function Home() {
 
       <div
         ref={generarBarRef}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur wide:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="container flex items-center gap-2 px-4 py-3">
