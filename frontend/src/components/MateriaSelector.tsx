@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Drawer,
   DrawerClose,
@@ -62,7 +63,7 @@ export function MateriaSelector({ selected, onChange }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [materias, setMaterias] = useState<MateriaListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -120,29 +121,35 @@ export function MateriaSelector({ selected, onChange }: Props) {
     return () => window.cancelAnimationFrame(id);
   }, [drawerOpen]);
 
-  useEffect(() => {
+  // Se incrementa en cada carga; ignoramos respuestas de cargas ya superadas
+  // (cambio de carrera o reintento) para no pisar el estado con data vieja.
+  const loadIdRef = useRef(0);
+  const loadMaterias = useCallback(() => {
     // Esperar a tener carrera (usuario logueado: hasta que cargue el profile).
     if (!carrera) {
       setMaterias([]);
       setLoading(true);
       return;
     }
-    let cancelled = false;
+    const loadId = ++loadIdRef.current;
     setLoading(true);
-    setError(null);
+    setError(false);
     api
       .listMateriasCached(carrera)
       .then((d) => {
-        if (!cancelled) setMaterias(d);
+        if (loadIdRef.current === loadId) setMaterias(d);
       })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+      .catch(() => {
+        if (loadIdRef.current === loadId) setError(true);
       })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => {
+        if (loadIdRef.current === loadId) setLoading(false);
+      });
   }, [carrera]);
+
+  useEffect(() => {
+    loadMaterias();
+  }, [loadMaterias]);
 
   const selectedIds = useMemo(
     () => new Set(selected.map((m) => m.codigo)),
@@ -204,9 +211,13 @@ export function MateriaSelector({ selected, onChange }: Props) {
           </div>
         )}
         {error && (
-          <div className="py-6 text-center text-sm text-destructive">
-            {error}
-          </div>
+          <ErrorState
+            title="No pudimos cargar las materias"
+            description="Revisá tu conexión y volvé a intentar."
+            onRetry={loadMaterias}
+            retrying={loading}
+            className="py-6"
+          />
         )}
         {!loading && !error && (
           <>

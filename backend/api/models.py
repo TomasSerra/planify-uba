@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, time
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class CursoSummary(BaseModel):
@@ -115,3 +116,22 @@ class SubscriptionState(BaseModel):
 class Me(BaseModel):
     carrera: str | None = None
     subscription: SubscriptionState
+
+
+class ClientErrorReport(BaseModel):
+    message: str
+    kind: Literal["render", "onerror", "unhandledrejection", "api"]
+    name: str | None = None
+    stack: str | None = None
+    component_stack: str | None = None
+    url: str | None = None
+    user_agent: str | None = None
+    app_version: str | None = None
+
+    # Truncamos los campos largos para no volcar payloads enormes en los logs.
+    @field_validator("message", "stack", "component_stack")
+    @classmethod
+    def _truncate(cls, v: str | None) -> str | None:
+        if v is not None and len(v) > 2000:
+            return v[:2000] + "…[truncado]"
+        return v

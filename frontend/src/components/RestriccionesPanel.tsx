@@ -7,6 +7,7 @@ import {
   Clock,
   Check,
   Gem,
+  Lock,
   Hourglass,
   ChevronUp,
   ChevronDown,
@@ -230,7 +231,7 @@ export function RestriccionesPanel({
       {!isPaid && (
         <div className="flex flex-col gap-3 rounded-lg border border-[#EC990B]/40 bg-[#EC990B]/10 px-4 py-3 sm:flex-row sm:items-start">
           <div className="flex flex-1 items-start gap-3">
-            <Gem className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
+            <Lock className="mt-0.5 size-4 shrink-0 text-[#EC990B]" />
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">
                 Algunos filtros requieren Pro
@@ -246,6 +247,7 @@ export function RestriccionesPanel({
               onClick={onUpgrade}
               className="w-full shrink-0 bg-[#EC990B] text-white hover:bg-[#EC990B]/90 sm:w-auto"
             >
+              <Gem className="size-4" />
               Hacete Pro
             </Button>
           )}

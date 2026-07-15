@@ -2,14 +2,27 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# En Vercel (serverless) no hay proceso Uvicorn que configure el root logger, así
+# que lo hacemos nosotros: sin esto los `log.info` no se emiten y no hay formato
+# uniforme. `force=True` gana sobre cualquier handler que Uvicorn ya haya puesto
+# en dev local.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    force=True,
+)
 log = logging.getLogger("main")
 
 from .auth import AuthUser, optional_user
@@ -19,6 +32,7 @@ from .models import (
     CatedraDetail,
     CatedraOpcion,
     CatedraSummary,
+    ClientErrorReport,
     ComisionOpcion,
     CursoListItem,
     CursoResponse,
@@ -95,6 +109,96 @@ app.add_middleware(
 app.include_router(me_router)
 app.include_router(pagos_router, prefix="/pagos")
 app.include_router(favoritos_router, prefix="/favoritos")
+
+
+def _req_id(request: Request) -> str:
+    # Vercel inyecta un id por invocación; sirve para correlacionar en los logs.
+    return request.headers.get("x-vercel-id", "-")
+
+
+@app.middleware("http")
+async def log_unhandled(request: Request, call_next):
+    # Única fuente del log de excepciones NO manejadas: las ve acá con stack,
+    # contexto y latencia. Los HTTPException/422 ya se convirtieron en Response
+    # más adentro (los loguean sus handlers), así que acá solo caen los errores
+    # inesperados (incluidos los de DB/pool que antes se perdían).
+    start = time.perf_counter()
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        log.error(
+            "Unhandled %s en %s %s?%s (req=%s, %.0fms): %s",
+            exc.__class__.__name__,
+            request.method,
+            request.url.path,
+            request.url.query,
+            _req_id(request),
+            elapsed_ms,
+            exc,
+            exc_info=True,
+        )
+        raise
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    level = logging.ERROR if exc.status_code >= 500 else logging.WARNING
+    log.log(
+        level,
+        "HTTP %s en %s %s (req=%s): %s",
+        exc.status_code,
+        request.method,
+        request.url.path,
+        _req_id(request),
+        exc.detail,
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=getattr(exc, "headers", None),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    log.warning(
+        "HTTP 422 en %s %s (req=%s): %s",
+        request.method,
+        request.url.path,
+        _req_id(request),
+        exc.errors(),
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    # Ya logueado con stack+contexto en `log_unhandled`; acá solo formamos la
+    # respuesta sin filtrar el detalle interno al cliente.
+    return JSONResponse(status_code=500, content={"detail": "Error interno"})
+
+
+@app.post("/client-errors", status_code=204)
+async def report_client_error(report: ClientErrorReport, request: Request):
+    """Recibe errores del navegador (SPA sin funciones propias en Vercel) y los
+    loguea con prefijo [client-error] para que aparezcan en los Runtime Logs de
+    este proyecto. Nunca falla: cualquier problema se traga y responde 204."""
+    try:
+        log.error(
+            "[client-error] kind=%s name=%s url=%s ua=%s req=%s msg=%s%s%s",
+            report.kind,
+            report.name,
+            report.url,
+            report.user_agent,
+            _req_id(request),
+            report.message,
+            f"\n{report.stack}" if report.stack else "",
+            f"\ncomponentStack:{report.component_stack}" if report.component_stack else "",
+        )
+    except Exception:
+        pass
+    return Response(status_code=204)
 
 
 # Datos servidos por el scraper diario (06:00 UTC) son estáticos durante el día.

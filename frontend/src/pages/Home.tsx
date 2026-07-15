@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { CarreraSelector } from "@/components/CarreraSelector";
 import { MateriaSelector } from "@/components/MateriaSelector";
+import { ErrorState } from "@/components/ErrorState";
 import { RestriccionesPanel } from "@/components/RestriccionesPanel";
 import { CalendarioPlan } from "@/components/CalendarioPlan";
 import { CalendarioPlanSkeleton } from "@/components/CalendarioPlanSkeleton";
@@ -475,8 +476,8 @@ export function Home() {
           bache,
           sc
         );
-      } catch (e) {
-        setError((e as Error).message);
+      } catch {
+        setError(true);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -499,7 +500,7 @@ export function Home() {
   }, [resultado]);
   const [planIdx, setPlanIdx] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   // Scroll también al mostrar el skeleton: apenas arranca el loading, llevamos
   // al usuario a la zona del calendario para que vea la animación.
@@ -534,7 +535,7 @@ export function Home() {
       setSedesPermitidas([]);
       setResultado(null);
       setLastGeneratedSignature(null);
-      setError(null);
+      setError(false);
     }
     lastCarreraRef.current = carreraActual;
   }, [carreraActual]);
@@ -600,7 +601,7 @@ export function Home() {
   ) {
     if (seleccion.length === 0) return;
     setLoading(true);
-    setError(null);
+    setError(false);
     setResultado(null);
     setPlanIdx(0);
     try {
@@ -710,7 +711,7 @@ export function Home() {
             "momento. Para usar estos filtros, hacete Pro.",
         });
       } else {
-        setError(msg);
+        setError(true);
       }
     } finally {
       setLoading(false);
@@ -739,7 +740,7 @@ export function Home() {
     setSoloCupos(false);
     setResultado(null);
     setPlanIdx(0);
-    setError(null);
+    setError(false);
     setLastGeneratedSignature(null);
     setLastGeneratedFilters(null);
     sessionStorage.removeItem("horarios:last-home-search");
@@ -778,7 +779,7 @@ export function Home() {
     scrollOnNextResultRef.current = true;
     setResultado(entry.response);
     setPlanIdx(0);
-    setError(null);
+    setError(false);
     setLastGeneratedSignature(
       JSON.stringify({
         materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
@@ -1014,12 +1015,14 @@ export function Home() {
         </div>
 
         {error && (
-          <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-            <AlertCircle className="mt-0.5 size-4 text-destructive" />
-            <div className="text-sm">
-              <p className="font-medium text-destructive">No se pudo generar</p>
-              <p className="text-muted-foreground">{error}</p>
-            </div>
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+            <ErrorState
+              title="No pudimos generar los planes"
+              description="Revisá tu conexión y volvé a intentar."
+              onRetry={generar}
+              retrying={loading}
+              className="py-2"
+            />
           </div>
         )}
 

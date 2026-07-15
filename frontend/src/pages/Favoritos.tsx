@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarioPlan, PlanLeyenda } from "@/components/CalendarioPlan";
+import { ErrorState } from "@/components/ErrorState";
 import { Header } from "@/components/Header";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
@@ -185,7 +186,7 @@ export function Favoritos() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["favoritos"],
     queryFn: async () => {
       const token = await getAccessTokenSilently();
@@ -259,8 +260,13 @@ export function Favoritos() {
 
         {isAuthenticated && error && (
           <Card>
-            <CardContent className="py-12 text-center text-sm text-destructive">
-              {(error as Error).message}
+            <CardContent className="py-6">
+              <ErrorState
+                title="No pudimos cargar tus favoritos"
+                description="Revisá tu conexión y volvé a intentar."
+                onRetry={() => refetch()}
+                retrying={isFetching}
+              />
             </CardContent>
           </Card>
         )}

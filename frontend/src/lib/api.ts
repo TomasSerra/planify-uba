@@ -10,31 +10,86 @@ import type {
   PlanResponse,
   UserProfile,
 } from "./types";
+import { reportError } from "./reportError";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
+// Reintentamos ante fallos de red (fetch tira → no es ApiError) o errores
+// transitorios del servidor (5xx / 429). Nunca ante 4xx: un 403 (Pro gating) o
+// un 400 (validación) no se arregla repitiendo.
+function isRetryable(e: unknown): boolean {
+  if (e instanceof ApiError) return e.status >= 500 || e.status === 429;
+  return true;
+}
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function request<T>(
   path: string,
   init?: RequestInit,
   token?: string | null
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((init?.headers as Record<string, string>) || {}),
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      detail = body.detail || detail;
-    } catch {
-      /* ignore */
+  const doFetch = async (): Promise<T> => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...((init?.headers as Record<string, string>) || {}),
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        detail = body.detail || detail;
+      } catch {
+        /* ignore */
+      }
+      // Mantener el formato "${status} ${detail}" en el mensaje: Home.tsx
+      // detecta el 403 con msg.startsWith("403").
+      throw new ApiError(res.status, `${res.status} ${detail}`);
     }
-    throw new Error(`${res.status} ${detail}`);
+    return res.json() as Promise<T>;
+  };
+
+  // Un único reintento automático antes de propagar el error a la UI.
+  try {
+    return await doFetch();
+  } catch (e) {
+    if (isRetryable(e)) {
+      await delay(400);
+      try {
+        return await doFetch();
+      } catch (e2) {
+        reportApiFailure(path, e2);
+        throw e2;
+      }
+    }
+    // 4xx no reintentable: esperable (403 paywall, 404, etc.), no se reporta.
+    throw e;
   }
-  return res.json() as Promise<T>;
+}
+
+// Reporta a Vercel Logs los fallos que el backend nunca ve (red/CORS/timeout) o
+// los 5xx que ya sobrevivieron al reintento. Los 4xx no se reportan.
+function reportApiFailure(path: string, e: unknown): void {
+  const isServerError = e instanceof ApiError && e.status >= 500;
+  const isNetworkError = !(e instanceof ApiError);
+  if (!isServerError && !isNetworkError) return;
+  reportError({
+    kind: "api",
+    message: `${API_BASE}${path} → ${e instanceof Error ? e.message : String(e)}`,
+    name: e instanceof Error ? e.name : "ApiError",
+    stack: e instanceof Error ? e.stack : null,
+  });
 }
 
 export interface CheckoutResponse {
