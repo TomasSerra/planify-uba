@@ -67,14 +67,16 @@ function useTabs() {
     { to: "/", label: "Inicio", icon: HomeIcon },
     { to: "/favoritos", label: "Mis Planes", icon: Heart },
     { to: "/planes-estudio", label: planLabel, icon: GraduationCap },
-    { to: "/catedras", label: "Recomendaciones", icon: Star },
+    { to: "/recomendaciones", label: "Recomendaciones", icon: Star },
   ];
 }
 
-// La tab queda activa en su ruta exacta y en sus subrutas (ej. Cátedras en
-// /catedras/:id). "/" sólo matchea exacto para no marcarse siempre.
+// La tab queda activa en su ruta exacta y en sus subrutas. "/" sólo matchea
+// exacto para no marcarse siempre. Recomendaciones también matchea el detalle
+// de cátedra, que vive en /catedras/:id.
 function isTabActive(pathname: string, to: string): boolean {
   if (to === "/") return pathname === "/";
+  if (to === "/recomendaciones" && pathname.startsWith("/catedras/")) return true;
   return pathname === to || pathname.startsWith(to + "/");
 }
 

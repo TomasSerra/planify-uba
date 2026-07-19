@@ -400,7 +400,7 @@ export function CatedraReviews() {
 
       <main className="container max-w-6xl space-y-5 px-4 pb-8 pt-6 sm:px-6">
         <Link
-          to="/catedras"
+          to="/recomendaciones"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -425,7 +425,7 @@ export function CatedraReviews() {
                   </p>
                   <p>Puede que ya no esté disponible.</p>
                   <Button asChild variant="outline" size="sm">
-                    <Link to="/catedras">Volver a Cátedras</Link>
+                    <Link to="/recomendaciones">Volver a Cátedras</Link>
                   </Button>
                 </div>
               ) : (
