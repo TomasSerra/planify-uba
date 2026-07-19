@@ -125,13 +125,20 @@ CREATE TABLE IF NOT EXISTS pending_checkouts (
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Perfil mínimo del usuario logueado (Firebase uid). Sólo se materializa una
--- fila cuando el usuario elige carrera por primera vez en el modal forced.
+-- Perfil mínimo del usuario logueado (Firebase uid). Se materializa una fila
+-- cuando el usuario elige carrera o setea su nombre por primera vez. Ambas
+-- columnas son nullables: se pide nombre primero y carrera después, así que la
+-- fila puede existir con solo una de las dos.
 CREATE TABLE IF NOT EXISTS user_profile (
     uid         TEXT PRIMARY KEY,
-    carrera     TEXT NOT NULL REFERENCES carreras(slug),
+    carrera     TEXT REFERENCES carreras(slug),
+    nombre      TEXT,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Para DBs preexistentes (Neon) creadas antes de tener nombre / con carrera NOT NULL.
+ALTER TABLE user_profile ADD COLUMN IF NOT EXISTS nombre TEXT;
+ALTER TABLE user_profile ALTER COLUMN carrera DROP NOT NULL;
 
 -- Reseñas de cátedras dejadas por la comunidad. Se atan a catedra_id (PK entero
 -- estable que viene de la fuente; el scraper hace upsert y nunca borra cátedras,

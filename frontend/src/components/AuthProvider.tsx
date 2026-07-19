@@ -16,6 +16,7 @@ function mapUser(u: import("firebase/auth").User | null): AuthUser | null {
     email: u.email,
     photoURL: u.photoURL,
     displayName: u.displayName,
+    providerId: u.providerData[0]?.providerId ?? null,
   };
 }
 

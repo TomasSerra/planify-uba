@@ -139,6 +139,7 @@ export interface Carrera {
 
 export interface UserProfile {
   carrera: string | null;
+  nombre: string | null;
 }
 
 export interface SubscriptionState {
@@ -148,6 +149,7 @@ export interface SubscriptionState {
 
 export interface Me {
   carrera: string | null;
+  nombre: string | null;
   subscription: SubscriptionState;
 }
 

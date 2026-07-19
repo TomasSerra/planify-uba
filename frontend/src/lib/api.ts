@@ -157,10 +157,13 @@ export const api = {
   getMateriaOpciones: (codigo: number) =>
     request<MateriaOpciones>(`/materias/${codigo}/opciones`),
   getMe: (token: string) => request<Me>("/me", undefined, token),
-  updateProfile: (carrera: string, token: string) =>
+  updateProfile: (
+    body: { carrera?: string; nombre?: string },
+    token: string
+  ) =>
     request<UserProfile>(
       "/me/profile",
-      { method: "PATCH", body: JSON.stringify({ carrera }) },
+      { method: "PATCH", body: JSON.stringify(body) },
       token
     ),
   postPlanes: (req: PlanRequest, token?: string | null) =>

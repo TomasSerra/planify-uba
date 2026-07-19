@@ -73,7 +73,7 @@ class TestMeEndpoint:
         future = datetime(2030, 6, 1, tzinfo=timezone.utc)
         monkeypatch.setattr("api.me.pool", fake_pool)
         monkeypatch.setattr("api.me.get_active_until", lambda conn, uid: future)
-        fake_conn.on("from user_profile", rows=[{"carrera": "psicologia"}])
+        fake_conn.on("from user_profile", rows=[{"carrera": "psicologia", "nombre": "Juan"}])
         resp = me_handler(user=AuthUser(id="uid"))
         assert resp.subscription.active is True
         assert resp.subscription.valid_until == future

@@ -123,7 +123,7 @@ export function Catedras() {
       <Header />
 
       <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
               Recomendaciones
@@ -133,9 +133,12 @@ export function Catedras() {
               dejá la tuya.
             </p>
           </div>
-          <Button className="shrink-0" onClick={() => setReviewOpen(true)}>
+          <Button
+            className="w-full shrink-0 sm:w-auto"
+            onClick={() => setReviewOpen(true)}
+          >
             <MessageSquarePlus className="size-4" />
-            <span className="hidden sm:inline">Dejar reseña</span>
+            Dejar reseña
           </Button>
         </div>
 

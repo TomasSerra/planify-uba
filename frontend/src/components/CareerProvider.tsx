@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { updateProfile as updateFirebaseProfile } from "firebase/auth";
+import { GraduationCap, Loader2, UserRound } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { auth } from "@/lib/firebase";
 import { useAlert } from "@/lib/alert";
 import { useAuth } from "@/lib/useAuth";
 import { CareerContext } from "@/lib/career";
 import { useMe } from "@/lib/useMe";
 import { DEFAULT_CARRERA, SEDES, type Carrera, type Me } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +52,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   });
 
   const [editableOpen, setEditableOpen] = useState(false);
+  const [editableNameOpen, setEditableNameOpen] = useState(false);
 
   const isLoadingProfile =
     authLoading || (isAuthenticated && meQuery.isLoading);
@@ -50,6 +60,10 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const carrera: string | null = isAuthenticated
     ? meQuery.data?.carrera ?? null
     : anonCarrera;
+
+  const nombre: string | null = isAuthenticated
+    ? meQuery.data?.nombre ?? null
+    : null;
 
   const carreraActual =
     carrera && carrerasQuery.data
@@ -65,59 +79,131 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     ? SEDES.filter((s) => carreraActual.sedes.includes(s.codigo))
     : SEDES;
 
-  const forcedOpen =
+  const profileReady =
     !authLoading &&
     isAuthenticated &&
     !meQuery.isLoading &&
-    meQuery.data !== undefined &&
-    meQuery.data.carrera === null;
+    meQuery.data !== undefined;
+
+  // El nombre se toma automáticamente del displayName (Google, o el que seteamos
+  // en el signup por email). Solo caemos al modal forzado si no hay displayName
+  // o si esa auto-persistencia falló. Leemos de auth.currentUser porque
+  // onAuthStateChanged no re-emite tras updateProfile.
+  const [autoSaveError, setAutoSaveError] = useState(false);
+  const hasDisplayName = !!auth.currentUser?.displayName?.trim();
+
+  const forcedNameOpen =
+    profileReady &&
+    meQuery.data!.nombre === null &&
+    (!hasDisplayName || autoSaveError);
+
+  // La carrera se pide DESPUÉS de que el nombre exista.
+  const forcedCarreraOpen =
+    profileReady &&
+    meQuery.data!.carrera === null &&
+    meQuery.data!.nombre !== null;
 
   // Update optimista del cache de `/me` para que MateriaSelector y demás
   // consumidores se refresquen al instante, sin esperar al refetch.
-  const updateCarreraMutation = useMutation({
-    mutationFn: async (slug: string) => {
+  const updateProfileMutation = useMutation({
+    mutationFn: async (body: { carrera?: string; nombre?: string }) => {
       const token = await getAccessTokenSilently();
-      return api.updateProfile(slug, token);
+      return api.updateProfile(body, token);
     },
     onSuccess: (resp) => {
       queryClient.setQueryData<Me | undefined>(["me", user?.uid], (old) =>
-        old ? { ...old, carrera: resp.carrera } : old
+        old ? { ...old, carrera: resp.carrera, nombre: resp.nombre } : old
       );
     },
   });
 
+  // Auto-persistencia del nombre desde displayName. Un intento por usuario.
+  const autoSavedRef = useRef(false);
+  useEffect(() => {
+    autoSavedRef.current = false;
+    setAutoSaveError(false);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (autoSavedRef.current) return;
+    if (!profileReady || meQuery.data!.nombre !== null) return;
+    const displayName = auth.currentUser?.displayName?.trim();
+    if (!displayName) return;
+    autoSavedRef.current = true;
+    updateProfileMutation.mutate(
+      { nombre: displayName },
+      { onError: () => setAutoSaveError(true) }
+    );
+  }, [profileReady, meQuery.data, updateProfileMutation]);
+
   const setCarrera = useCallback(
     async (slug: string) => {
       if (isAuthenticated) {
-        await updateCarreraMutation.mutateAsync(slug);
+        await updateProfileMutation.mutateAsync({ carrera: slug });
       } else {
         localStorage.setItem(LS_KEY, slug);
         setAnonCarrera(slug);
       }
     },
-    [isAuthenticated, updateCarreraMutation]
+    [isAuthenticated, updateProfileMutation]
+  );
+
+  const setNombre = useCallback(
+    async (value: string) => {
+      await updateProfileMutation.mutateAsync({ nombre: value });
+      if (auth.currentUser) {
+        await updateFirebaseProfile(auth.currentUser, {
+          displayName: value,
+        }).catch(() => {
+          /* consistencia con Firebase; no bloqueante */
+        });
+      }
+    },
+    [updateProfileMutation]
   );
 
   const openChangeCarrera = useCallback(() => setEditableOpen(true), []);
+  const openChangeNombre = useCallback(() => setEditableNameOpen(true), []);
 
   return (
     <CareerContext.Provider
       value={{
         carrera,
+        nombre,
         carreraNombre,
         sedesDisponibles,
         setCarrera,
         openChangeCarrera,
+        openChangeNombre,
         isLoading: isLoadingProfile,
       }}
     >
       {children}
+      <NombreModal
+        open={forcedNameOpen || editableNameOpen}
+        mode={forcedNameOpen ? "forced" : "editable"}
+        currentNombre={nombre}
+        onClose={() => setEditableNameOpen(false)}
+        onSave={async (value) => {
+          try {
+            await setNombre(value);
+            setEditableNameOpen(false);
+            setAutoSaveError(false);
+          } catch (e) {
+            showAlert({
+              variant: "error",
+              title: "No se pudo guardar el nombre",
+              message: (e as Error).message,
+            });
+          }
+        }}
+      />
       <CareerModal
-        open={forcedOpen || editableOpen}
-        mode={forcedOpen ? "forced" : "editable"}
+        open={forcedCarreraOpen || editableOpen}
+        mode={forcedCarreraOpen ? "forced" : "editable"}
         carreras={carrerasQuery.data ?? []}
         currentCarrera={carrera}
-        initialSlug={forcedOpen ? anonCarrera : carrera ?? anonCarrera}
+        initialSlug={forcedCarreraOpen ? anonCarrera : carrera ?? anonCarrera}
         onClose={() => setEditableOpen(false)}
         onSave={async (slug) => {
           try {
@@ -133,6 +219,102 @@ export function CareerProvider({ children }: { children: ReactNode }) {
         }}
       />
     </CareerContext.Provider>
+  );
+}
+
+function NombreModal({
+  open,
+  mode,
+  currentNombre,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  mode: "forced" | "editable";
+  currentNombre: string | null;
+  onClose: () => void;
+  onSave: (nombre: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setValue(
+        mode === "editable"
+          ? currentNombre ?? ""
+          : auth.currentUser?.displayName ?? ""
+      );
+    }
+  }, [open, mode, currentNombre]);
+
+  const trimmed = value.trim();
+
+  async function handleSave() {
+    if (!trimmed) return;
+    setSaving(true);
+    try {
+      await onSave(trimmed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (mode === "forced") return;
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent
+        hideClose={mode === "forced"}
+        onPointerDownOutside={(e) => {
+          if (mode === "forced") e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (mode === "forced") e.preventDefault();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserRound className="size-5 text-[#861f5c]" />
+            {mode === "forced" ? "¿Cómo te llamás?" : "Cambiar nombre"}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === "forced"
+              ? "Completá tu nombre para terminar de crear tu cuenta."
+              : "Actualizá el nombre que se muestra en tu cuenta."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+          className="flex flex-col gap-3 py-1"
+        >
+          <Input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Nombre y apellido"
+            maxLength={100}
+          />
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full bg-[#861f5c] text-white hover:bg-[#861f5c]/90"
+            disabled={!trimmed || saving || trimmed === currentNombre}
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+            Guardar
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

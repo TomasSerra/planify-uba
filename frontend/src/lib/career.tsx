@@ -3,6 +3,8 @@ import { createContext, useContext } from "react";
 export interface CareerContextValue {
   // null mientras se está cargando el perfil del usuario autenticado.
   carrera: string | null;
+  // Nombre completo del usuario. null mientras carga o si todavía no lo puso.
+  nombre: string | null;
   // Nombre legible (e.g. "Licenciatura en Psicología"). null si todavía no
   // hay carrera o si las carreras no terminaron de cargar.
   carreraNombre: string | null;
@@ -14,6 +16,8 @@ export interface CareerContextValue {
   // PATCH /me/profile para usuarios logueados.
   setCarrera: (slug: string) => Promise<void>;
   openChangeCarrera: () => void;
+  // Abre el modal de edición de nombre (solo tiene sentido para cuentas no-Google).
+  openChangeNombre: () => void;
   isLoading: boolean;
 }
 

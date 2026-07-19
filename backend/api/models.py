@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, time
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class CursoSummary(BaseModel):
@@ -105,10 +105,28 @@ class Carrera(BaseModel):
 
 class UserProfile(BaseModel):
     carrera: str | None = None
+    nombre: str | None = None
 
 
 class UpdateProfileRequest(BaseModel):
-    carrera: str
+    carrera: str | None = None
+    nombre: str | None = None
+
+    @field_validator("nombre")
+    @classmethod
+    def _clean_nombre(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError("El nombre no puede estar vacío")
+        return v[:100]
+
+    @model_validator(mode="after")
+    def _al_menos_uno(self) -> "UpdateProfileRequest":
+        if self.carrera is None and self.nombre is None:
+            raise ValueError("Se requiere carrera o nombre")
+        return self
 
 
 class SubscriptionState(BaseModel):
@@ -118,6 +136,7 @@ class SubscriptionState(BaseModel):
 
 class Me(BaseModel):
     carrera: str | None = None
+    nombre: str | None = None
     subscription: SubscriptionState
 
 

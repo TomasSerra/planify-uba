@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Star,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -198,11 +199,14 @@ function PayChip() {
 function UserMenu() {
   const { user, isAuthenticated, isLoading, openLogin, logout } = useAuth();
   const { isPaid, validUntil } = useSubscription();
-  const { carreraNombre } = useCareer();
+  const { nombre, carreraNombre } = useCareer();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const email = user?.email ?? "";
-  const initial = email.slice(0, 1).toUpperCase() || "?";
+  // En el trigger mostramos el nombre; caemos al email mientras el perfil carga.
+  const displayName = nombre ?? email;
+  const initial =
+    (nombre?.trim()?.[0] ?? email.slice(0, 1)).toUpperCase() || "?";
 
   if (isLoading) {
     return (
@@ -240,7 +244,9 @@ function UserMenu() {
           >
             <div className="hidden flex-col leading-tight wide:flex text-left">
               <div className="flex max-w-[12rem] flex-col">
-                <span className="truncate text-xs text-foreground">{email}</span>
+                <span className="truncate text-xs text-foreground">
+                  {displayName}
+                </span>
                 {carreraNombre && (
                   <span className="truncate text-[10px] text-muted-foreground">
                     {carreraNombre}
@@ -252,7 +258,7 @@ function UserMenu() {
               {user?.photoURL ? (
                 <img
                   src={user.photoURL}
-                  alt={email}
+                  alt={displayName}
                   className="size-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -272,6 +278,11 @@ function UserMenu() {
         </PopoverTrigger>
         <PopoverContent align="end" className="w-56 p-2">
           <div className="border-b px-2 py-1.5">
+            {nombre && (
+              <div className="truncate text-xs font-medium text-foreground">
+                {nombre}
+              </div>
+            )}
             <div className="truncate text-xs text-muted-foreground">{email}</div>
             {isPaid && validUntilFormatted && (
               <div className="mt-0.5 text-[10px] font-medium text-[#EC990B]">
@@ -279,6 +290,7 @@ function UserMenu() {
               </div>
             )}
           </div>
+          <CambiarNombreButton onClicked={() => setMenuOpen(false)} />
           <CambiarCarreraButton onClicked={() => setMenuOpen(false)} />
           <button
             type="button"
@@ -323,6 +335,26 @@ function UserMenu() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function CambiarNombreButton({ onClicked }: { onClicked: () => void }) {
+  // Solo para cuentas no-Google: en Google el nombre viene de la cuenta. Se
+  // oculta mientras el perfil no cargó (o el modal forced está en curso).
+  const { user } = useAuth();
+  const { nombre, openChangeNombre } = useCareer();
+  if (!nombre || user?.providerId === "google.com") return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onClicked();
+        openChangeNombre();
+      }}
+      className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+    >
+      <UserRound className="size-4" /> Cambiar nombre
+    </button>
   );
 }
 

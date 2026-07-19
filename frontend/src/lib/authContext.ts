@@ -5,6 +5,8 @@ export type AuthUser = {
   email: string | null;
   photoURL: string | null;
   displayName: string | null;
+  // "google.com" | "password" | ... — provider con el que se autenticó.
+  providerId: string | null;
 };
 
 export type AuthTab = "signin" | "signup";

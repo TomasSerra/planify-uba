@@ -14,12 +14,13 @@ router = APIRouter()
 def me(user: AuthUser = Depends(current_user)) -> Me:
     with pool.connection() as conn:
         valid_until = get_active_until(conn, user.id)
-        carrera_row = conn.execute(
-            "SELECT carrera FROM user_profile WHERE uid = %s",
+        profile_row = conn.execute(
+            "SELECT carrera, nombre FROM user_profile WHERE uid = %s",
             (user.id,),
         ).fetchone()
     return Me(
-        carrera=carrera_row["carrera"] if carrera_row else None,
+        carrera=profile_row["carrera"] if profile_row else None,
+        nombre=profile_row["nombre"] if profile_row else None,
         subscription=SubscriptionState(
             active=valid_until is not None,
             valid_until=valid_until,
@@ -33,20 +34,25 @@ def update_me_profile(
     user: AuthUser = Depends(current_user),
 ) -> UserProfile:
     with pool.connection() as conn:
-        exists = conn.execute(
-            "SELECT 1 FROM carreras WHERE slug = %s",
-            (body.carrera,),
-        ).fetchone()
-        if exists is None:
-            raise HTTPException(status_code=400, detail="Carrera inexistente")
-        conn.execute(
+        if body.carrera is not None:
+            exists = conn.execute(
+                "SELECT 1 FROM carreras WHERE slug = %s",
+                (body.carrera,),
+            ).fetchone()
+            if exists is None:
+                raise HTTPException(status_code=400, detail="Carrera inexistente")
+        # COALESCE: solo pisa los campos provistos, deja intactos los que vienen
+        # en None (permite setear nombre y carrera en pasos separados).
+        row = conn.execute(
             """
-            INSERT INTO user_profile (uid, carrera)
-            VALUES (%s, %s)
+            INSERT INTO user_profile (uid, carrera, nombre)
+            VALUES (%s, %s, %s)
             ON CONFLICT (uid) DO UPDATE SET
-                carrera    = EXCLUDED.carrera,
+                carrera    = COALESCE(EXCLUDED.carrera, user_profile.carrera),
+                nombre     = COALESCE(EXCLUDED.nombre, user_profile.nombre),
                 updated_at = NOW()
+            RETURNING carrera, nombre
             """,
-            (user.id, body.carrera),
-        )
-    return UserProfile(carrera=body.carrera)
+            (user.id, body.carrera, body.nombre),
+        ).fetchone()
+    return UserProfile(carrera=row["carrera"], nombre=row["nombre"])

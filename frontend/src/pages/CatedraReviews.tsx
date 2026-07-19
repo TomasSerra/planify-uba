@@ -445,7 +445,7 @@ export function CatedraReviews() {
             {/* Cabecera: materia + cátedra + promedio + distribución */}
             <Card>
               <CardContent className="p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight">
                       {data.catedra.materia_nombre}
@@ -455,9 +455,12 @@ export function CatedraReviews() {
                     </p>
                   </div>
                   {!my && (
-                    <Button className="shrink-0" onClick={openNew}>
+                    <Button
+                      className="w-full shrink-0 sm:w-auto"
+                      onClick={openNew}
+                    >
                       <MessageSquarePlus className="size-4" />
-                      <span className="hidden sm:inline">Dejar reseña</span>
+                      Dejar reseña
                     </Button>
                   )}
                 </div>

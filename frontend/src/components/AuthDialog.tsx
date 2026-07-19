@@ -7,10 +7,12 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
+  updateProfile as updateFirebaseProfile,
 } from "firebase/auth";
 import { Loader2, LogIn, UserPlus } from "lucide-react";
 import googleLogo from "@/assets/google-logo.png";
 import { auth, googleProvider } from "@/lib/firebase";
+import { api } from "@/lib/api";
 import { useAlert } from "@/lib/alert";
 import type { AuthTab } from "@/lib/authContext";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,7 @@ export function AuthDialog({
 }) {
   const showAlert = useAlert();
   const [tab, setTab] = useState<AuthTab>(initialTab);
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -69,6 +72,7 @@ export function AuthDialog({
       setTab(initialTab);
       setError(null);
     } else {
+      setNombre("");
       setEmail("");
       setPassword("");
       setPasswordConfirm("");
@@ -131,10 +135,21 @@ export function AuthDialog({
       setError("Las contraseñas no coinciden.");
       return;
     }
+    const nombreLimpio = nombre.trim();
     setBusy("email");
     setError(null);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      // Guardamos el nombre en Firebase (displayName) y en nuestra DB. Si el
+      // PATCH falla, el modal forzado de CareerProvider queda como red de
+      // seguridad (displayName seteado → auto-persistencia lo reintenta).
+      await updateFirebaseProfile(cred.user, { displayName: nombreLimpio }).catch(
+        () => {}
+      );
+      cred.user
+        .getIdToken()
+        .then((token) => api.updateProfile({ nombre: nombreLimpio }, token))
+        .catch(() => {});
       sendEmailVerification(cred.user).catch(() => {
         /* no bloqueante: la app no exige verificación */
       });
@@ -209,6 +224,21 @@ export function AuthDialog({
           onSubmit={isSignIn ? handleSignIn : handleSignUp}
           className="space-y-3"
         >
+          {!isSignIn && (
+            <div className="space-y-1.5">
+              <Label htmlFor="auth-nombre">Nombre completo</Label>
+              <Input
+                id="auth-nombre"
+                type="text"
+                autoComplete="name"
+                required
+                maxLength={100}
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                disabled={busy !== null}
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="auth-email">Email</Label>
             <Input
