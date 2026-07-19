@@ -1,5 +1,7 @@
 import type {
   Carrera,
+  CatedraRankPage,
+  CatedraReviewsResponse,
   Favorite,
   FavoriteFilters,
   MateriaListItem,
@@ -8,6 +10,8 @@ import type {
   Plan,
   PlanRequest,
   PlanResponse,
+  ReviewItem,
+  ReviewSort,
   UserProfile,
 } from "./types";
 import { reportError } from "./reportError";
@@ -106,7 +110,7 @@ export interface PagoStatus {
 const MATERIAS_TTL_MS = 60 * 60 * 1000;
 // Bumpear cuando cambie el shape de MateriaListItem (campo nuevo, rename,
 // etc.) para invalidar caches viejas sin esperar el TTL.
-const MATERIAS_CACHE_VERSION = 1;
+const MATERIAS_CACHE_VERSION = 2;
 
 function readMateriasCache(key: string): MateriaListItem[] | null {
   try {
@@ -184,6 +188,60 @@ export const api = {
   deleteFavorito: (id: number, token: string) =>
     request<{ ok: boolean }>(
       `/favoritos/${id}`,
+      { method: "DELETE" },
+      token
+    ),
+  listCatedraRankings: (params: {
+    carrera: string;
+    q?: string;
+    sort?: ReviewSort;
+    page?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    qs.set("carrera", params.carrera);
+    if (params.q) qs.set("q", params.q);
+    if (params.sort) qs.set("sort", params.sort);
+    if (params.page) qs.set("page", String(params.page));
+    return request<CatedraRankPage>(`/catedras?${qs.toString()}`);
+  },
+  // token opcional: si hay sesión, la respuesta incluye `my_review`.
+  // `rating` filtra el listado por cantidad de estrellas (null = todas);
+  // `profesor` filtra por profesor (null = todos). Ambos combinan.
+  getCatedraReviews: (
+    catedraId: number,
+    page: number,
+    rating: number | null,
+    profesor: string | null,
+    token?: string | null
+  ) => {
+    const qs = new URLSearchParams({ page: String(page) });
+    if (rating != null) qs.set("rating", String(rating));
+    if (profesor != null) qs.set("profesor", profesor);
+    return request<CatedraReviewsResponse>(
+      `/catedras/${catedraId}/reviews?${qs.toString()}`,
+      undefined,
+      token ?? undefined
+    );
+  },
+  saveCatedraReview: (
+    catedraId: number,
+    body: {
+      rating: number;
+      comment: string | null;
+      profesor: string | null;
+      profesor_rating: number | null;
+      anio: number;
+    },
+    token: string
+  ) =>
+    request<ReviewItem>(
+      `/catedras/${catedraId}/reviews`,
+      { method: "PUT", body: JSON.stringify(body) },
+      token
+    ),
+  deleteCatedraReview: (catedraId: number, token: string) =>
+    request<{ ok: boolean }>(
+      `/catedras/${catedraId}/reviews`,
       { method: "DELETE" },
       token
     ),

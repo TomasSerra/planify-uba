@@ -34,6 +34,7 @@ const SUBSCRIPTION_MONTHS = 3;
 
 export const FREE_MAX_PLANES = 15;
 export const PRO_MAX_PLANES = 100;
+export const FREE_MAX_REVIEWS = 5;
 
 // Filas de la comparación gratis vs pro. Reflejan lo que
 // `_request_uses_filters` (backend/api/main.py) gatea como Pro: días
@@ -50,14 +51,14 @@ const COMPARISON_ROWS: {
   cardProText?: string;
 }[] = [
   {
-    label: "Generador de planes sin solapamientos",
+    label: "Generador de planes",
     free: true,
     pro: true,
   },
   {
     label: "Planes por generación",
-    free: String(FREE_MAX_PLANES),
-    pro: String(PRO_MAX_PLANES),
+    free: `Hasta ${FREE_MAX_PLANES}`,
+    pro: `Hasta ${PRO_MAX_PLANES}`,
     cardFreeText: `Hasta ${FREE_MAX_PLANES} planes por generación`,
     cardProText: `Hasta ${PRO_MAX_PLANES} planes por generación`,
   },
@@ -80,6 +81,13 @@ const COMPARISON_ROWS: {
     label: "Guardar planes favoritos",
     free: false,
     pro: true,
+  },
+  {
+    label: "Reseñas visibles por cátedra",
+    free: `Primeras ${FREE_MAX_REVIEWS}`,
+    pro: "Todas",
+    cardFreeText: `Primeras ${FREE_MAX_REVIEWS} reseñas por cátedra`,
+    cardProText: "Todas las reseñas por cátedra",
   },
 ];
 
@@ -106,6 +114,10 @@ const PAYWALL_COPY: Record<
   "planes-limit": {
     title: "Más planes con Pro",
     description: `Con gratis generás hasta ${FREE_MAX_PLANES} planes por generación.`,
+  },
+  reviews: {
+    title: "Leé todas las reseñas con Pro",
+    description: `Con gratis ves las primeras ${FREE_MAX_REVIEWS} reseñas de cada cátedra.`,
   },
   general: {
     title: "Armá tu cuatri sin límites",

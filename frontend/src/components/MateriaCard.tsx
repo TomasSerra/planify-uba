@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StarRating } from "@/components/StarRating";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
 import { usePaywall } from "@/lib/paywall";
@@ -224,6 +225,30 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
   );
 }
 
+// Línea de metadatos de una opción de cátedra: estrellas de reseñas (si tiene) +
+// cantidad de profesores. Las estrellas ayudan a decidir cátedra al armar el plan.
+function CatedraOptionMeta({ c }: { c: CatedraOpcion }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+      {c.review_count > 0 ? (
+        <span className="flex items-center gap-1">
+          <StarRating value={c.avg_rating ?? 0} size={12} />
+          <span className="font-medium text-foreground">
+            {c.avg_rating?.toFixed(1)}
+          </span>
+          <span>({c.review_count})</span>
+        </span>
+      ) : (
+        <span>Sin reseñas</span>
+      )}
+      <span aria-hidden className="text-muted-foreground/40">
+        ·
+      </span>
+      <span>{c.profesores.length} prof. en comisiones</span>
+    </span>
+  );
+}
+
 function CatedraDropdown({
   catedras,
   disponibles,
@@ -309,9 +334,7 @@ function CatedraDropdown({
               Cát {c.numero ?? c.id}
               {c.titular ? <> · <span className="font-normal">{c.titular}</span></> : null}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {c.profesores.length} profesores en comisiones
-            </span>
+            <CatedraOptionMeta c={c} />
           </button>
         ))}
         {noDisponibles.length > 0 && (
@@ -331,9 +354,7 @@ function CatedraDropdown({
                   Cát {c.numero ?? c.id}
                   {c.titular ? <> · <span className="font-normal">{c.titular}</span></> : null}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {c.profesores.length} profesores en comisiones
-                </span>
+                <CatedraOptionMeta c={c} />
               </button>
             ))}
           </>

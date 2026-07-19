@@ -46,6 +46,7 @@ from .favoritos import router as favoritos_router
 from .me import router as me_router
 from .pagos import router as pagos_router
 from .planes import PlanRequest, PlanResponse, armar_planes
+from .reviews import router as reviews_router
 from .subs import has_active_subscription
 
 
@@ -109,6 +110,9 @@ app.add_middleware(
 app.include_router(me_router)
 app.include_router(pagos_router, prefix="/pagos")
 app.include_router(favoritos_router, prefix="/favoritos")
+# GET /catedras (ranking) y {GET,PUT,DELETE} /catedras/{id}/reviews. No colisiona
+# con el GET /catedras/{catedra_id} definido más abajo (rutas distintas).
+app.include_router(reviews_router, prefix="/catedras")
 
 
 def _req_id(request: Request) -> str:
@@ -316,6 +320,9 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
         ).fetchone()
         if materia is None:
             raise HTTPException(status_code=404, detail="Materia no encontrada")
+        # avg_rating/review_count van como subqueries correlacionadas (no como
+        # LEFT JOIN a catedra_reviews) para no multiplicar las filas de comisiones
+        # y romper los array_agg/jsonb_agg de profesores y comisiones.
         rows = conn.execute(
             """
             SELECT ca.id, ca.numero, ca.titular, ca.cuatrimestre,
@@ -329,7 +336,11 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
                            'profesor', cu.profesor, 'sede', cu.sede))
                          FILTER (WHERE cu.profesor IS NOT NULL OR cu.sede IS NOT NULL),
                        '[]'::jsonb
-                   ) AS comisiones
+                   ) AS comisiones,
+                   (SELECT AVG(r.rating)::float FROM catedra_reviews r
+                     WHERE r.catedra_id = ca.id) AS avg_rating,
+                   (SELECT COUNT(*) FROM catedra_reviews r
+                     WHERE r.catedra_id = ca.id) AS review_count
               FROM catedras ca
               LEFT JOIN cursos cu ON cu.catedra_id = ca.id AND cu.tipo = 'comision'
              WHERE ca.materia_codigo = %s
@@ -349,6 +360,10 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
                 cuatrimestre=r["cuatrimestre"],
                 profesores=sorted(r["profesores"]),
                 comisiones=[ComisionOpcion(**c) for c in r["comisiones"]],
+                avg_rating=(
+                    round(r["avg_rating"], 2) if r["avg_rating"] is not None else None
+                ),
+                review_count=r["review_count"],
             )
             for r in rows
         ],

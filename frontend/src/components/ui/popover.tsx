@@ -8,9 +8,11 @@ export const PopoverAnchor = PopoverPrimitive.Anchor;
 
 export const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 6, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
+    container?: React.ComponentProps<typeof PopoverPrimitive.Portal>["container"];
+  }
+>(({ className, align = "center", sideOffset = 6, container, ...props }, ref) => (
+  <PopoverPrimitive.Portal container={container}>
     <PopoverPrimitive.Content
       ref={ref}
       align={align}

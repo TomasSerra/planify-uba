@@ -81,6 +81,9 @@ class CatedraOpcion(BaseModel):
     cuatrimestre: str | None = None
     profesores: list[str]  # profesores únicos de las comisiones de esta cátedra
     comisiones: list[ComisionOpcion]  # tuplas (profesor, sede) de sus comisiones
+    # Reseñas de la cátedra (para mostrar estrellas en el selector del planner).
+    avg_rating: float | None = None
+    review_count: int = 0
 
 
 class MateriaOpciones(BaseModel):

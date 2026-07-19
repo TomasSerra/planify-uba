@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,7 +66,15 @@ function useTabs() {
     { to: "/", label: "Inicio", icon: HomeIcon },
     { to: "/favoritos", label: "Mis Planes", icon: Heart },
     { to: "/planes-estudio", label: planLabel, icon: GraduationCap },
+    { to: "/catedras", label: "Recomendaciones", icon: Star },
   ];
+}
+
+// La tab queda activa en su ruta exacta y en sus subrutas (ej. Cátedras en
+// /catedras/:id). "/" sólo matchea exacto para no marcarse siempre.
+function isTabActive(pathname: string, to: string): boolean {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(to + "/");
 }
 
 function resolveTabTo(to: string): string {
@@ -81,7 +90,7 @@ function Tabs() {
   return (
     <nav className="hidden items-center gap-4 wide:flex">
       {TABS.map(({ to, label, icon: Icon }) => {
-        const active = pathname === to;
+        const active = isTabActive(pathname, to);
         return (
           <Link
             key={to}
@@ -137,7 +146,7 @@ function MobileMenu() {
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {TABS.map(({ to, label, icon: Icon }) => {
-            const active = pathname === to;
+            const active = isTabActive(pathname, to);
             return (
               <SheetClose asChild key={to}>
                 <Link

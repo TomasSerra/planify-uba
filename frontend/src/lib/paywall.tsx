@@ -6,6 +6,7 @@ export type PaywallReason =
   | "filtros"
   | "favoritos"
   | "planes-limit"
+  | "reviews"
   | "general";
 
 export const PaywallContext = createContext<

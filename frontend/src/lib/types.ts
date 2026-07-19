@@ -74,6 +74,9 @@ export interface CatedraOpcion {
   cuatrimestre: string | null;
   profesores: string[];
   comisiones: ComisionOpcion[];
+  // Reseñas de la cátedra (para mostrar estrellas en el selector del planner).
+  avg_rating: number | null;
+  review_count: number;
 }
 
 export interface MateriaOpciones {
@@ -146,6 +149,73 @@ export interface SubscriptionState {
 export interface Me {
   carrera: string | null;
   subscription: SubscriptionState;
+}
+
+// --- Reseñas de cátedras ------------------------------------------------------
+
+export type ReviewSort = "mejores" | "peores" | "mas_resenas" | "materia";
+
+export interface CatedraRankItem {
+  catedra_id: number;
+  materia_codigo: number;
+  materia_nombre: string;
+  numero: string | null;
+  titular: string | null;
+  cuatrimestre: string | null;
+  avg_rating: number | null;
+  review_count: number;
+}
+
+export interface CatedraRankPage {
+  items: CatedraRankItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ReviewItem {
+  id: number;
+  // Nota de la cátedra.
+  rating: number;
+  comment: string | null;
+  // Profesor puntuado y su nota, opcionales (o los dos o ninguno).
+  profesor: string | null;
+  profesor_rating: number | null;
+  anio: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfesorStats {
+  profesor: string;
+  avg_rating: number | null;
+  review_count: number;
+}
+
+export interface CatedraHeader {
+  id: number;
+  materia_codigo: number;
+  materia_nombre: string;
+  numero: string | null;
+  titular: string | null;
+  cuatrimestre: string | null;
+}
+
+export interface CatedraReviewsResponse {
+  catedra: CatedraHeader;
+  avg_rating: number | null;
+  review_count: number;
+  // Claves "1".."5" (JSON serializa las claves numéricas como string).
+  distribution: Record<string, number>;
+  // Todos los profesores de la cátedra con sus agregados (no filtrado).
+  profesores: ProfesorStats[];
+  my_review: ReviewItem | null;
+  reviews: ReviewItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  // True cuando la lista se recortó por el gate free (hay más reseñas ocultas).
+  locked: boolean;
 }
 
 export const DEFAULT_CARRERA = "licenciatura-psicologia";

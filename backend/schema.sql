@@ -132,3 +132,30 @@ CREATE TABLE IF NOT EXISTS user_profile (
     carrera     TEXT NOT NULL REFERENCES carreras(slug),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Reseñas de cátedras dejadas por la comunidad. Se atan a catedra_id (PK entero
+-- estable que viene de la fuente; el scraper hace upsert y nunca borra cátedras,
+-- así que las reseñas sobreviven entre cuatrimestres). Una reseña por usuario por
+-- cátedra (UNIQUE). clerk_user_id: mismo comentario histórico que en las otras
+-- tablas — hoy guarda el uid de Firebase. Las reseñas se muestran anónimas: el
+-- uid sólo sirve para el UNIQUE y para que el autor edite/borre la suya.
+CREATE TABLE IF NOT EXISTS catedra_reviews (
+    id             BIGSERIAL PRIMARY KEY,
+    catedra_id     INTEGER NOT NULL REFERENCES catedras(id) ON DELETE CASCADE,
+    clerk_user_id  TEXT NOT NULL,
+    -- Nota de la CÁTEDRA (obligatoria).
+    rating         SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment        TEXT,
+    -- Profesor reseñado (de las comisiones de la cátedra) y su nota, opcionales:
+    -- o van los dos o ninguno. Independiente del rating de la cátedra.
+    profesor       TEXT,
+    profesor_rating SMALLINT CHECK (profesor_rating BETWEEN 1 AND 5),
+    anio           SMALLINT NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (catedra_id, clerk_user_id),
+    CHECK ((profesor IS NULL) = (profesor_rating IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_catedra_reviews_catedra
+    ON catedra_reviews(catedra_id, created_at DESC);
