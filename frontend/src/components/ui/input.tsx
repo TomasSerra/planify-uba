@@ -10,7 +10,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         ref={ref}
         className={cn(
-          "flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-sm:min-h-[44px]",
+          // text-base (16px) en mobile: iOS hace zoom al enfocar inputs con
+          // fuente <16px. En desktop volvemos a 14px, donde el zoom no aplica.
+          "flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-sm:min-h-[44px] sm:text-sm",
           className
         )}
         {...props}
