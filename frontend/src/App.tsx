@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Home } from "./pages/Home";
 import { Favoritos } from "./pages/Favoritos";
 import { PlanesEstudio } from "./pages/PlanesEstudio";
@@ -8,10 +9,21 @@ import { PaywallProvider } from "./components/PaywallProvider";
 import { CareerProvider } from "./components/CareerProvider";
 import { Footer } from "./components/Footer";
 
+// Resetea el scroll al tope en cada cambio de ruta: React Router conserva la
+// posición por defecto (ej: entrar a una cátedra desde /recomendaciones).
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <PaywallProvider>
       <CareerProvider>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/favoritos" element={<Favoritos />} />
