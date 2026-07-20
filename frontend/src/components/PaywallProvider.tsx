@@ -28,8 +28,10 @@ import { markProActive } from "@/lib/useMe";
 import { PaywallContext, type PaywallReason } from "@/lib/paywall";
 import { cn } from "@/lib/utils";
 
-// Mantener en sync con backend: SUBSCRIPTION_PRICE_ARS y SUBSCRIPTION_DAYS.
-const SUBSCRIPTION_PRICE_ARS = 2800;
+// Precio configurable desde Vercel (VITE_SUBSCRIPTION_PRICE_ARS). El precio
+// real que cobra MP lo define el backend; mantener en sync con ese env.
+const SUBSCRIPTION_PRICE_ARS =
+  Number(import.meta.env.VITE_SUBSCRIPTION_PRICE_ARS) || 2490;
 const SUBSCRIPTION_MONTHS = 3;
 
 export const FREE_MAX_PLANES = 15;
