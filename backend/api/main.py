@@ -41,6 +41,7 @@ from .models import (
     MateriaDetail,
     MateriaListItem,
     MateriaOpciones,
+    ProfesorRating,
 )
 from .favoritos import router as favoritos_router
 from .me import router as me_router
@@ -349,9 +350,32 @@ def get_materia_opciones(codigo: int, response: Response) -> MateriaOpciones:
             """,
             (codigo,),
         ).fetchall()
+        # Promedio por profesor (por nombre) agregando su nota dedicada
+        # (profesor_rating) de las reseñas de todas las cátedras de la materia.
+        prof_rating_rows = conn.execute(
+            """
+            SELECT r.profesor,
+                   AVG(r.profesor_rating)::float AS avg_rating,
+                   COUNT(*) AS review_count
+              FROM catedra_reviews r
+              JOIN catedras ca ON ca.id = r.catedra_id
+             WHERE ca.materia_codigo = %s
+               AND r.profesor IS NOT NULL
+               AND r.profesor_rating IS NOT NULL
+             GROUP BY r.profesor
+            """,
+            (codigo,),
+        ).fetchall()
     return MateriaOpciones(
         codigo=materia["codigo"],
         nombre=materia["nombre"],
+        profesores_rating={
+            r["profesor"]: ProfesorRating(
+                avg_rating=round(r["avg_rating"], 2),
+                review_count=r["review_count"],
+            )
+            for r in prof_rating_rows
+        },
         catedras=[
             CatedraOpcion(
                 id=r["id"],

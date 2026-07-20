@@ -7,6 +7,7 @@ import {
   GraduationCap,
   Gem,
   MapPin,
+  Star,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,6 +26,7 @@ import type {
   CatedraOpcion,
   MateriaOpciones,
   MateriaSeleccionada,
+  ProfesorRating,
 } from "@/lib/types";
 
 interface Props {
@@ -194,6 +196,7 @@ export function MateriaCard({ nombre, seleccion, onChange, onRemove }: Props) {
               <ProfesoresDropdown
                 profesores={profesoresUniverse}
                 disponibles={profesoresDisponibles}
+                ratings={opciones.profesores_rating}
                 selected={seleccion.profesores}
                 onChange={(profs) => onChange({ ...seleccion, profesores: profs })}
                 catedraLabel={catedraSeleccionada?.titular ?? null}
@@ -364,9 +367,25 @@ function CatedraDropdown({
   );
 }
 
+// Estrella única + promedio para un profesor (sólo si tiene reseñas).
+function ProfesorRatingBadge({ rating }: { rating?: ProfesorRating }) {
+  if (!rating || rating.review_count === 0 || rating.avg_rating === null) {
+    return null;
+  }
+  return (
+    <span className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">
+      <Star className="size-3 fill-amber-400 text-amber-400" strokeWidth={1.5} />
+      <span className="font-medium text-foreground">
+        {rating.avg_rating.toFixed(1)}
+      </span>
+    </span>
+  );
+}
+
 function ProfesoresDropdown({
   profesores,
   disponibles,
+  ratings,
   selected,
   onChange,
   catedraLabel,
@@ -375,6 +394,7 @@ function ProfesoresDropdown({
 }: {
   profesores: string[];
   disponibles: string[];
+  ratings: Record<string, ProfesorRating>;
   selected: string[] | null;
   onChange: (profs: string[] | null) => void;
   catedraLabel: string | null;
@@ -479,6 +499,7 @@ function ProfesoresDropdown({
                       onCheckedChange={() => toggle(p)}
                     />
                     <span className="flex-1 truncate">{p}</span>
+                    <ProfesorRatingBadge rating={ratings[p]} />
                   </label>
                 );
               })}
@@ -495,6 +516,7 @@ function ProfesoresDropdown({
                     >
                       <Checkbox checked={false} disabled />
                       <span className="flex-1 truncate">{p}</span>
+                      <ProfesorRatingBadge rating={ratings[p]} />
                     </label>
                   ))}
                 </>

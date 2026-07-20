@@ -79,10 +79,17 @@ export interface CatedraOpcion {
   review_count: number;
 }
 
+export interface ProfesorRating {
+  avg_rating: number | null;
+  review_count: number;
+}
+
 export interface MateriaOpciones {
   codigo: number;
   nombre: string;
   catedras: CatedraOpcion[];
+  // Promedio por profesor (clave = nombre) para mostrar estrella + nota.
+  profesores_rating: Record<string, ProfesorRating>;
 }
 
 export interface PlanResponse {

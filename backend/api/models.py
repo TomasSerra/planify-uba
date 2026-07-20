@@ -86,10 +86,19 @@ class CatedraOpcion(BaseModel):
     review_count: int = 0
 
 
+class ProfesorRating(BaseModel):
+    avg_rating: float | None = None
+    review_count: int = 0
+
+
 class MateriaOpciones(BaseModel):
     codigo: int
     nombre: str
     catedras: list[CatedraOpcion]
+    # Promedio por profesor (clave = nombre), agregando profesor_rating de las
+    # reseñas de todas las cátedras de la materia. Para mostrar una estrella +
+    # nota en el selector de profesores.
+    profesores_rating: dict[str, ProfesorRating] = {}
 
 
 class HealthResponse(BaseModel):
