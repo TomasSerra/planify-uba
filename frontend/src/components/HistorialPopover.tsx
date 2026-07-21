@@ -11,6 +11,7 @@ import {
   removeHistory,
 } from "@/lib/planHistory";
 import { useAuth } from "@/lib/useAuth";
+import { useIsWide } from "@/lib/useIsWide";
 import { useSubscription } from "@/lib/useSubscription";
 import type { PlanHistoryEntry } from "@/lib/types";
 
@@ -36,6 +37,7 @@ export function HistorialPopover({
 }) {
   const { user } = useAuth();
   const { isPaid } = useSubscription();
+  const isWide = useIsWide();
   const uid = user?.uid ?? null;
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<PlanHistoryEntry[]>(() =>
@@ -72,7 +74,7 @@ export function HistorialPopover({
       </PopoverTrigger>
       <PopoverContent
         side="bottom"
-        align="end"
+        align={isWide ? "start" : "end"}
         sideOffset={8}
         className="max-w-[calc(100vw-2rem)] p-2 max-sm:w-[calc(100vw-2rem)] sm:w-[20rem]"
       >

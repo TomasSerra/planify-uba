@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StarRating } from "@/components/StarRating";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
+import { useIsWide } from "@/lib/useIsWide";
 import { usePaywall } from "@/lib/paywall";
 import { SEDES } from "@/lib/types";
 import type {
@@ -268,6 +269,7 @@ function CatedraDropdown({
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const isWide = useIsWide();
   const sel = catedras.find((c) => c.id === selected);
   const habilitadas = catedras.filter((c) => disponibles.has(c.id));
   const noDisponibles = catedras.filter((c) => !disponibles.has(c.id));
@@ -302,7 +304,10 @@ function CatedraDropdown({
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-1" align="start">
+      <PopoverContent
+        className="w-[min(20rem,calc(100vw-2rem))] p-1"
+        align={isWide ? "start" : "center"}
+      >
         <button
           type="button"
           onClick={() => {
@@ -402,6 +407,7 @@ function ProfesoresDropdown({
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const isWide = useIsWide();
   const disponiblesSet = new Set(disponibles);
   const noDisponibles = profesores.filter((p) => !disponiblesSet.has(p));
 
@@ -461,7 +467,10 @@ function ProfesoresDropdown({
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-2" align="start">
+      <PopoverContent
+        className="w-[min(20rem,calc(100vw-2rem))] p-2"
+        align={isWide ? "start" : "center"}
+      >
         <p className="px-2 pb-2 text-xs text-muted-foreground">
           {catedraLabel
             ? `Profesores de ${catedraLabel}.`
@@ -545,6 +554,7 @@ function SedeDropdown({
   onLockedClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const isWide = useIsWide();
   const habilitadas = sedes.filter((s) => disponibles.has(s.codigo));
   const noDisponibles = sedes.filter((s) => !disponibles.has(s.codigo));
   // Para el label usamos SEDES (lookup completo) por si la selección quedó
@@ -579,7 +589,10 @@ function SedeDropdown({
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-1" align="start">
+      <PopoverContent
+        className="w-[min(20rem,calc(100vw-2rem))] p-1"
+        align={isWide ? "start" : "center"}
+      >
         <button
           type="button"
           onClick={() => {
