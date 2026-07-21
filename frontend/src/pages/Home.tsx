@@ -339,6 +339,10 @@ interface UrlState {
   f: FranjaExcluida[];
   s: string[];
   b?: number | null;
+  dmin?: number | null;
+  dmax?: number | null;
+  hmin?: number | null;
+  hmax?: number | null;
   sc?: boolean;
 }
 
@@ -392,6 +396,10 @@ export function Home() {
   const [franjas, setFranjas] = useState<FranjaExcluida[]>([]);
   const [sedesPermitidas, setSedesPermitidas] = useState<string[]>([]);
   const [maxBacheHoras, setMaxBacheHoras] = useState<number | null>(null);
+  const [minDiasSemana, setMinDiasSemana] = useState<number | null>(null);
+  const [maxDiasSemana, setMaxDiasSemana] = useState<number | null>(null);
+  const [minHorasDia, setMinHorasDia] = useState<number | null>(null);
+  const [maxHorasDia, setMaxHorasDia] = useState<number | null>(null);
   const [soloCupos, setSoloCupos] = useState<boolean>(false);
   const [materiasOpen, setMateriasOpen] = useState(true);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
@@ -428,6 +436,10 @@ export function Home() {
       ((decoded.f && decoded.f.length > 0) ||
         (decoded.s && decoded.s.length > 0) ||
         decoded.b != null ||
+        decoded.dmin != null ||
+        decoded.dmax != null ||
+        decoded.hmin != null ||
+        decoded.hmax != null ||
         decoded.m.some(
           (x) => x.ca !== null || x.p !== null || (x.se ?? null) !== null
         ));
@@ -438,6 +450,10 @@ export function Home() {
           f: [],
           s: [],
           b: null,
+          dmin: null,
+          dmax: null,
+          hmin: null,
+          hmax: null,
         }
       : decoded;
     (async () => {
@@ -453,11 +469,21 @@ export function Home() {
         }));
         const bache = safeDecoded.b ?? null;
         const sc = safeDecoded.sc ?? false;
+        const rangos = {
+          minDias: safeDecoded.dmin ?? null,
+          maxDias: safeDecoded.dmax ?? null,
+          minHoras: safeDecoded.hmin ?? null,
+          maxHoras: safeDecoded.hmax ?? null,
+        };
         setMaterias(seleccion);
         setDiasPermitidos(safeDecoded.d);
         setFranjas(safeDecoded.f);
         setSedesPermitidas(safeDecoded.s);
         setMaxBacheHoras(bache);
+        setMinDiasSemana(rangos.minDias);
+        setMaxDiasSemana(rangos.maxDias);
+        setMinHorasDia(rangos.minHoras);
+        setMaxHorasDia(rangos.maxHoras);
         setSoloCupos(sc);
         if (proFiltersInUrl) {
           showAlert({
@@ -474,7 +500,8 @@ export function Home() {
           safeDecoded.f,
           safeDecoded.s,
           bache,
-          sc
+          sc,
+          rangos
         );
       } catch {
         setError(true);
@@ -553,9 +580,24 @@ export function Home() {
         franjas,
         sedesPermitidas: [...sedesPermitidas].sort(),
         maxBacheHoras,
+        minDiasSemana,
+        maxDiasSemana,
+        minHorasDia,
+        maxHorasDia,
         soloCupos,
       }),
-    [materias, diasPermitidos, franjas, sedesPermitidas, maxBacheHoras, soloCupos]
+    [
+      materias,
+      diasPermitidos,
+      franjas,
+      sedesPermitidas,
+      maxBacheHoras,
+      minDiasSemana,
+      maxDiasSemana,
+      minHorasDia,
+      maxHorasDia,
+      soloCupos,
+    ]
   );
 
   const sinCambios =
@@ -569,7 +611,11 @@ export function Home() {
     materias,
     franjas,
     sedesPermitidas,
-    maxBacheHoras
+    maxBacheHoras,
+    minDiasSemana,
+    maxDiasSemana,
+    minHorasDia,
+    maxHorasDia
   );
   const proFiltersBlocked = !isPaid && !subLoading && formUsesProFilters;
 
@@ -597,7 +643,13 @@ export function Home() {
     franjasExcl: FranjaExcluida[],
     sedes: string[],
     bache: number | null,
-    solo: boolean
+    solo: boolean,
+    rangos: {
+      minDias: number | null;
+      maxDias: number | null;
+      minHoras: number | null;
+      maxHoras: number | null;
+    }
   ) {
     if (seleccion.length === 0) return;
     setLoading(true);
@@ -621,6 +673,10 @@ export function Home() {
           franjas_excluidas: franjasExcl,
           sedes_permitidas: sedes,
           max_bache_horas: bache,
+          min_dias_semana: rangos.minDias,
+          max_dias_semana: rangos.maxDias,
+          min_horas_dia: rangos.minHoras,
+          max_horas_dia: rangos.maxHoras,
           max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
           solo_con_cupos: solo,
         },
@@ -639,6 +695,10 @@ export function Home() {
         franjas: franjasExcl,
         sedesPermitidas: [...sedes].sort(),
         maxBacheHoras: bache,
+        minDiasSemana: rangos.minDias,
+        maxDiasSemana: rangos.maxDias,
+        minHorasDia: rangos.minHoras,
+        maxHorasDia: rangos.maxHoras,
         soloCupos: solo,
       });
       setLastGeneratedSignature(sig);
@@ -647,6 +707,10 @@ export function Home() {
         franjas_excluidas: franjasExcl,
         sedes_permitidas: sedes,
         max_bache_horas: bache,
+        min_dias_semana: rangos.minDias,
+        max_dias_semana: rangos.maxDias,
+        min_horas_dia: rangos.minHoras,
+        max_horas_dia: rangos.maxHoras,
         solo_con_cupos: solo,
         materias: seleccion.map((m) => ({
           codigo: m.codigo,
@@ -671,6 +735,10 @@ export function Home() {
             franjas_excluidas: franjasExcl,
             sedes_permitidas: sedes,
             max_bache_horas: bache,
+            min_dias_semana: rangos.minDias,
+            max_dias_semana: rangos.maxDias,
+            min_horas_dia: rangos.minHoras,
+            max_horas_dia: rangos.maxHoras,
             max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
             solo_con_cupos: solo,
           },
@@ -689,6 +757,10 @@ export function Home() {
         f: franjasExcl,
         s: sedes,
         b: bache,
+        dmin: rangos.minDias ?? undefined,
+        dmax: rangos.maxDias ?? undefined,
+        hmin: rangos.minHoras ?? undefined,
+        hmax: rangos.maxHoras ?? undefined,
         sc: solo || undefined,
       });
       const search = `?q=${q}`;
@@ -727,7 +799,13 @@ export function Home() {
       franjas,
       sedesPermitidas,
       maxBacheHoras,
-      soloCupos
+      soloCupos,
+      {
+        minDias: minDiasSemana,
+        maxDias: maxDiasSemana,
+        minHoras: minHorasDia,
+        maxHoras: maxHorasDia,
+      }
     );
   }
 
@@ -737,6 +815,10 @@ export function Home() {
     setFranjas([]);
     setSedesPermitidas([]);
     setMaxBacheHoras(null);
+    setMinDiasSemana(null);
+    setMaxDiasSemana(null);
+    setMinHorasDia(null);
+    setMaxHorasDia(null);
     setSoloCupos(false);
     setResultado(null);
     setPlanIdx(0);
@@ -770,11 +852,21 @@ export function Home() {
     );
     const bache = entry.filters.max_bache_horas ?? null;
     const solo = entry.filters.solo_con_cupos ?? false;
+    const rangos = {
+      minDias: entry.filters.min_dias_semana ?? null,
+      maxDias: entry.filters.max_dias_semana ?? null,
+      minHoras: entry.filters.min_horas_dia ?? null,
+      maxHoras: entry.filters.max_horas_dia ?? null,
+    };
     setMaterias(seleccion);
     setDiasPermitidos(dias);
     setFranjas(entry.filters.franjas_excluidas);
     setSedesPermitidas(entry.filters.sedes_permitidas);
     setMaxBacheHoras(bache);
+    setMinDiasSemana(rangos.minDias);
+    setMaxDiasSemana(rangos.maxDias);
+    setMinHorasDia(rangos.minHoras);
+    setMaxHorasDia(rangos.maxHoras);
     setSoloCupos(solo);
     scrollOnNextResultRef.current = true;
     setResultado(entry.response);
@@ -792,6 +884,10 @@ export function Home() {
         franjas: entry.filters.franjas_excluidas,
         sedesPermitidas: [...entry.filters.sedes_permitidas].sort(),
         maxBacheHoras: bache,
+        minDiasSemana: rangos.minDias,
+        maxDiasSemana: rangos.maxDias,
+        minHorasDia: rangos.minHoras,
+        maxHorasDia: rangos.maxHoras,
         soloCupos: solo,
       })
     );
@@ -807,6 +903,10 @@ export function Home() {
       f: entry.filters.franjas_excluidas,
       s: entry.filters.sedes_permitidas,
       b: bache,
+      dmin: rangos.minDias ?? undefined,
+      dmax: rangos.maxDias ?? undefined,
+      hmin: rangos.minHoras ?? undefined,
+      hmax: rangos.maxHoras ?? undefined,
       sc: solo || undefined,
     });
     const search = `?q=${q}`;
@@ -952,6 +1052,10 @@ export function Home() {
                   franjas.length > 0 ||
                   sedesPermitidas.length > 0 ||
                   maxBacheHoras !== null ||
+                  minDiasSemana !== null ||
+                  maxDiasSemana !== null ||
+                  minHorasDia !== null ||
+                  maxHorasDia !== null ||
                   soloCupos) && (
                   <button
                     type="button"
@@ -960,6 +1064,10 @@ export function Home() {
                       setFranjas([]);
                       setSedesPermitidas([]);
                       setMaxBacheHoras(null);
+                      setMinDiasSemana(null);
+                      setMaxDiasSemana(null);
+                      setMinHorasDia(null);
+                      setMaxHorasDia(null);
                       setSoloCupos(false);
                     }}
                     className="text-sm font-medium leading-none text-primary hover:underline"
@@ -984,6 +1092,14 @@ export function Home() {
                 onSedesChange={setSedesPermitidas}
                 maxBacheHoras={maxBacheHoras}
                 onMaxBacheHorasChange={setMaxBacheHoras}
+                minDiasSemana={minDiasSemana}
+                onMinDiasSemanaChange={setMinDiasSemana}
+                maxDiasSemana={maxDiasSemana}
+                onMaxDiasSemanaChange={setMaxDiasSemana}
+                minHorasDia={minHorasDia}
+                onMinHorasDiaChange={setMinHorasDia}
+                maxHorasDia={maxHorasDia}
+                onMaxHorasDiaChange={setMaxHorasDia}
                 soloCupos={soloCupos}
                 onSoloCuposChange={setSoloCupos}
                 isPaid={isPaid}

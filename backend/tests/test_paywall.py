@@ -56,6 +56,18 @@ class TestRequestUsesFilters:
     def test_sede_por_materia_dispara(self):
         assert _request_uses_filters(_req([MateriaSeleccionada(codigo=1, sede="HY")])) is True
 
+    def test_min_dias_semana_dispara(self):
+        assert _request_uses_filters(_req(min_dias_semana=2)) is True
+
+    def test_max_dias_semana_dispara(self):
+        assert _request_uses_filters(_req(max_dias_semana=4)) is True
+
+    def test_min_horas_dia_dispara(self):
+        assert _request_uses_filters(_req(min_horas_dia=2.0)) is True
+
+    def test_max_horas_dia_dispara(self):
+        assert _request_uses_filters(_req(max_horas_dia=6.0)) is True
+
     def test_dias_excluidos_NO_dispara(self):
         # Free feature: el FE permite excluir días sin ser Pro.
         assert _request_uses_filters(_req(dias_excluidos=["lunes", "sabado"])) is False
@@ -105,6 +117,26 @@ class TestPlanesEndpointGating:
             post_planes(req, user=None)
         assert exc.value.status_code == 403
         assert "Pro" in exc.value.detail
+
+    def test_anonimo_con_min_dias_semana_da_403(self, monkeypatch, fake_pool, fake_conn):
+        _setup_pool_and_sub(monkeypatch, fake_pool, fake_conn, has_sub=False)
+        req = _req(min_dias_semana=2)
+        with pytest.raises(HTTPException) as exc:
+            post_planes(req, user=None)
+        assert exc.value.status_code == 403
+
+    def test_anonimo_con_max_horas_dia_da_403(self, monkeypatch, fake_pool, fake_conn):
+        _setup_pool_and_sub(monkeypatch, fake_pool, fake_conn, has_sub=False)
+        req = _req(max_horas_dia=6.0)
+        with pytest.raises(HTTPException) as exc:
+            post_planes(req, user=None)
+        assert exc.value.status_code == 403
+
+    def test_pro_con_dias_horas_pasa(self, monkeypatch, fake_pool, fake_conn):
+        _setup_pool_and_sub(monkeypatch, fake_pool, fake_conn, has_sub=True)
+        req = _req(min_dias_semana=1, max_dias_semana=3, min_horas_dia=1.0, max_horas_dia=8.0)
+        resp = post_planes(req, user=AuthUser(id="uid-pro"))
+        assert resp is not None
 
     def test_free_logueado_sin_filtros_pasa(self, monkeypatch, fake_pool, fake_conn):
         _setup_pool_and_sub(monkeypatch, fake_pool, fake_conn, has_sub=False)

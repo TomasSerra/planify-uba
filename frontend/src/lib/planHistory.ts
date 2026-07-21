@@ -86,6 +86,8 @@ export function entryUsesProFilters(entry: PlanHistoryEntry): boolean {
   if (f.franjas_excluidas && f.franjas_excluidas.length > 0) return true;
   if (f.sedes_permitidas && f.sedes_permitidas.length > 0) return true;
   if (f.max_bache_horas != null) return true;
+  if (f.min_dias_semana != null || f.max_dias_semana != null) return true;
+  if (f.min_horas_dia != null || f.max_horas_dia != null) return true;
   for (const m of f.materias) {
     if (m.catedra_id !== null) return true;
     if (m.profesores !== null) return true;
@@ -102,11 +104,17 @@ export function seleccionUsesProFilters(
   }>,
   franjas: Array<unknown>,
   sedesPermitidas: string[],
-  maxBacheHoras: number | null
+  maxBacheHoras: number | null,
+  minDiasSemana: number | null = null,
+  maxDiasSemana: number | null = null,
+  minHorasDia: number | null = null,
+  maxHorasDia: number | null = null
 ): boolean {
   if (franjas.length > 0) return true;
   if (sedesPermitidas.length > 0) return true;
   if (maxBacheHoras != null) return true;
+  if (minDiasSemana != null || maxDiasSemana != null) return true;
+  if (minHorasDia != null || maxHorasDia != null) return true;
   for (const m of materias) {
     if (m.catedra_id !== null) return true;
     if (m.profesores !== null) return true;

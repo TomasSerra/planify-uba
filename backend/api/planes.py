@@ -12,7 +12,7 @@ from datetime import time
 from itertools import combinations, product as iproduct
 from typing import Callable, Iterable, Iterator
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .models import CursoSummary
 
@@ -71,6 +71,40 @@ class PlanRequest(BaseModel):
             "en horas. None = sin límite."
         ),
     )
+    min_dias_semana: int | None = Field(
+        default=None,
+        ge=1,
+        le=7,
+        description=(
+            "Mínimo de días distintos en los que se reparten las clases del plan. "
+            "None = sin mínimo."
+        ),
+    )
+    max_dias_semana: int | None = Field(
+        default=None,
+        ge=1,
+        le=7,
+        description=(
+            "Máximo de días distintos en los que se reparten las clases del plan. "
+            "None = sin máximo."
+        ),
+    )
+    min_horas_dia: float | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Mínimo de horas por día (span: de la primera a la última clase de "
+            "cada día con clases). None = sin mínimo."
+        ),
+    )
+    max_horas_dia: float | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Máximo de horas por día (span: de la primera a la última clase de "
+            "cada día con clases). None = sin máximo."
+        ),
+    )
     max_planes: int = Field(20, ge=1, le=100)
     solo_con_cupos: bool = Field(
         default=False,
@@ -80,6 +114,22 @@ class PlanRequest(BaseModel):
             "el cupo de la comisión vía comision_obliga."
         ),
     )
+
+    @model_validator(mode="after")
+    def _validar_rangos(self) -> "PlanRequest":
+        if (
+            self.min_dias_semana is not None
+            and self.max_dias_semana is not None
+            and self.min_dias_semana > self.max_dias_semana
+        ):
+            raise ValueError("min_dias_semana no puede ser mayor que max_dias_semana")
+        if (
+            self.min_horas_dia is not None
+            and self.max_horas_dia is not None
+            and self.min_horas_dia > self.max_horas_dia
+        ):
+            raise ValueError("min_horas_dia no puede ser mayor que max_horas_dia")
+        return self
 
 
 class CursoEnPlan(CursoSummary):
@@ -152,6 +202,37 @@ def _plan_respeta_bache(
     return True
 
 
+def _plan_respeta_dias_horas(
+    cursos: Iterable[CursoEnPlan],
+    min_dias: int | None,
+    max_dias: int | None,
+    min_horas: float | None,
+    max_horas: float | None,
+) -> bool:
+    """True si el plan reparte sus clases en un número de días distintos dentro
+    de [min_dias, max_dias] y cada día con clases tiene un span (de la primera a
+    la última clase, huecos incluidos) dentro de [min_horas, max_horas]."""
+    by_day: dict[str, list[CursoEnPlan]] = defaultdict(list)
+    for c in cursos:
+        if c.dia and c.hora_inicio and c.hora_fin:
+            by_day[c.dia].append(c)
+    n_dias = len(by_day)
+    if min_dias is not None and n_dias < min_dias:
+        return False
+    if max_dias is not None and n_dias > max_dias:
+        return False
+    if min_horas is not None or max_horas is not None:
+        for day_cursos in by_day.values():
+            span = max(_time_to_hours(c.hora_fin) for c in day_cursos) - min(
+                _time_to_hours(c.hora_inicio) for c in day_cursos
+            )
+            if min_horas is not None and span < min_horas:
+                return False
+            if max_horas is not None and span > max_horas:
+                return False
+    return True
+
+
 def _opcion_key(op: OpcionMateria) -> int:
     # La comisión siempre es el primer curso (ver _fetch_opciones_por_materia).
     return op.cursos[0].id
@@ -201,6 +282,10 @@ def _reorder_round_robin(planes: list[Plan], num_materias: int) -> list[Plan]:
 def _enumerar_combos(
     opciones_validas: list[list[OpcionMateria]],
     max_bache_horas: float | None = None,
+    min_dias_semana: int | None = None,
+    max_dias_semana: int | None = None,
+    min_horas_dia: float | None = None,
+    max_horas_dia: float | None = None,
     target_pool: int | None = None,
     on_attempt: Callable[[], None] | None = None,
 ) -> Iterator[tuple[OpcionMateria, ...]]:
@@ -247,6 +332,19 @@ def _enumerar_combos(
                     continue
                 if max_bache_horas is not None and not _plan_respeta_bache(
                     cursos, max_bache_horas
+                ):
+                    continue
+                if (
+                    min_dias_semana is not None
+                    or max_dias_semana is not None
+                    or min_horas_dia is not None
+                    or max_horas_dia is not None
+                ) and not _plan_respeta_dias_horas(
+                    cursos,
+                    min_dias_semana,
+                    max_dias_semana,
+                    min_horas_dia,
+                    max_horas_dia,
                 ):
                     continue
                 yield combo
@@ -425,6 +523,10 @@ def armar_planes(conn, req: PlanRequest) -> PlanResponse:
     for combo in _enumerar_combos(
         opciones_validas,
         max_bache_horas=req.max_bache_horas,
+        min_dias_semana=req.min_dias_semana,
+        max_dias_semana=req.max_dias_semana,
+        min_horas_dia=req.min_horas_dia,
+        max_horas_dia=req.max_horas_dia,
         target_pool=pool_target,
         on_attempt=_bump,
     ):

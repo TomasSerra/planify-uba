@@ -19,6 +19,7 @@ import {
   GraduationCap,
   MapPin,
   User,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
@@ -41,6 +42,8 @@ interface CursoConContexto extends CursoEnPlan {
   materia_color: string;
   catedra_titular: string | null;
   sinCupos: boolean;
+  // Vacantes de la comisión de la opción (autoritativas para toda la opción).
+  cuposRestantes: number | null;
 }
 
 interface Props {
@@ -168,6 +171,17 @@ function CursoDetalle({
           <span>Cátedra: {curso.catedra_titular}</span>
         </div>
       )}
+      {curso.cuposRestantes != null && curso.cuposRestantes > 0 && (
+        <div className={textCls}>
+          <Users className={cn("shrink-0", iconSize)} />
+          <span>
+            {curso.cuposRestantes}{" "}
+            {curso.cuposRestantes === 1
+              ? "cupo disponible"
+              : "cupos disponibles"}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -288,6 +302,7 @@ export function CalendarioPlan({
       // Solo la comisión tiene `vacantes` cargado: teóricos/seminarios
       // comparten el cupo de la comisión via comision_obliga.
       const comision = op.cursos.find((c) => c.tipo === "comision");
+      const cuposRestantes = comision?.vacantes ?? null;
       const sinCupos =
         comision != null &&
         (comision.vacantes == null || comision.vacantes <= 0);
@@ -299,6 +314,7 @@ export function CalendarioPlan({
           materia_color: palette.bg,
           catedra_titular: op.catedra_titular,
           sinCupos,
+          cuposRestantes,
         });
       });
     });

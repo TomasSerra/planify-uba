@@ -58,6 +58,10 @@ export interface PlanRequest {
   franjas_excluidas?: FranjaExcluida[];
   sedes_permitidas?: string[];
   max_bache_horas?: number | null;
+  min_dias_semana?: number | null;
+  max_dias_semana?: number | null;
+  min_horas_dia?: number | null;
+  max_horas_dia?: number | null;
   max_planes?: number;
   solo_con_cupos?: boolean;
 }
@@ -103,6 +107,10 @@ export interface FavoriteFilters {
   franjas_excluidas: FranjaExcluida[];
   sedes_permitidas: string[];
   max_bache_horas?: number | null;
+  min_dias_semana?: number | null;
+  max_dias_semana?: number | null;
+  min_horas_dia?: number | null;
+  max_horas_dia?: number | null;
   solo_con_cupos?: boolean;
   materias: Array<{
     codigo: number;

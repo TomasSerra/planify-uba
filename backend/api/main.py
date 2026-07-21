@@ -506,6 +506,10 @@ def _request_uses_filters(req: PlanRequest) -> bool:
         return True
     if req.max_bache_horas is not None:
         return True
+    if req.min_dias_semana is not None or req.max_dias_semana is not None:
+        return True
+    if req.min_horas_dia is not None or req.max_horas_dia is not None:
+        return True
     for m in req.materias:
         if m.catedra_id is not None or m.profesores is not None or m.sede is not None:
             return True
@@ -527,9 +531,9 @@ def post_planes(
             raise HTTPException(
                 status_code=403,
                 detail=(
-                    "Los filtros (franjas, sedes, bache máximo, cátedra "
-                    "y profesores) son una función Pro. Suscribite para "
-                    "usarlos."
+                    "Los filtros (franjas, sedes, bache máximo, días por "
+                    "semana, horas por día, cátedra y profesores) son una "
+                    "función Pro. Suscribite para usarlos."
                 ),
             )
         max_allowed = 100 if is_paid else 15

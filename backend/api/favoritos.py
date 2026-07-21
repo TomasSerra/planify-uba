@@ -19,6 +19,10 @@ class FavoriteFilters(BaseModel):
     franjas_excluidas: list[FranjaExcluida] = []
     sedes_permitidas: list[str] = []
     max_bache_horas: float | None = None
+    min_dias_semana: int | None = None
+    max_dias_semana: int | None = None
+    min_horas_dia: float | None = None
+    max_horas_dia: float | None = None
     # Por materia: lo que el usuario tenía elegido (cátedra fija + profesores + sede).
     materias: list[dict] = []
 

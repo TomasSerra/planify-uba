@@ -13,6 +13,7 @@ from api.planes import (
     _enumerar_combos,
     _hay_solapamiento,
     _plan_respeta_bache,
+    _plan_respeta_dias_horas,
     OpcionMateria,
 )
 
@@ -118,6 +119,62 @@ class TestPlanRespetaBache:
         b = _curso(id=2, dia="lunes", hi=(12, 0), hf=(13, 0))  # 30 min de gap
         assert _plan_respeta_bache([a, b], max_bache_horas=0.5) is True
         assert _plan_respeta_bache([a, b], max_bache_horas=0.4) is False
+
+
+# ----------------------------- _plan_respeta_dias_horas -----------------------
+
+class TestPlanRespetaDiasHoras:
+    def test_none_todo_pasa(self):
+        a = _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0))
+        b = _curso(id=2, dia="martes", hi=(8, 0), hf=(10, 0))
+        assert _plan_respeta_dias_horas([a, b], None, None, None, None) is True
+
+    def test_cuenta_dias_distintos(self):
+        cursos = [
+            _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=2, dia="martes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=3, dia="miercoles", hi=(8, 0), hf=(10, 0)),
+        ]
+        assert _plan_respeta_dias_horas(cursos, None, 3, None, None) is True
+        assert _plan_respeta_dias_horas(cursos, None, 2, None, None) is False
+        assert _plan_respeta_dias_horas(cursos, 3, None, None, None) is True
+        assert _plan_respeta_dias_horas(cursos, 4, None, None, None) is False
+
+    def test_varios_cursos_mismo_dia_cuentan_un_dia(self):
+        cursos = [
+            _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=2, dia="lunes", hi=(14, 0), hf=(16, 0)),
+        ]
+        assert _plan_respeta_dias_horas(cursos, None, 1, None, None) is True
+
+    def test_span_es_de_primera_a_ultima_no_suma(self):
+        # 8-10 y 16-18 → span 10h (suma sería 4h).
+        cursos = [
+            _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=2, dia="lunes", hi=(16, 0), hf=(18, 0)),
+        ]
+        assert _plan_respeta_dias_horas(cursos, None, None, None, 6.0) is False
+        assert _plan_respeta_dias_horas(cursos, None, None, None, 10.0) is True
+
+    def test_min_horas_por_dia(self):
+        cursos = [_curso(id=1, dia="lunes", hi=(10, 0), hf=(12, 0))]  # span 2h
+        assert _plan_respeta_dias_horas(cursos, None, None, 2.0, None) is True
+        assert _plan_respeta_dias_horas(cursos, None, None, 2.5, None) is False
+
+    def test_horas_se_evaluan_por_dia_no_global(self):
+        # Cada día span 2h; con max=3 pasa aunque haya dos días.
+        cursos = [
+            _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=2, dia="martes", hi=(8, 0), hf=(10, 0)),
+        ]
+        assert _plan_respeta_dias_horas(cursos, None, None, None, 3.0) is True
+
+    def test_ignora_cursos_sin_dia_u_hora(self):
+        cursos = [
+            _curso(id=1, dia="lunes", hi=(8, 0), hf=(10, 0)),
+            _curso(id=2, dia=None, hi=None, hf=None),
+        ]
+        assert _plan_respeta_dias_horas(cursos, None, 1, None, None) is True
 
 
 # ----------------------------- _curso_cumple_restricciones --------------------

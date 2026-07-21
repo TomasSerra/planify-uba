@@ -507,6 +507,154 @@ class TestMaxBacheHoras:
         assert len(resp.planes) == 1
 
 
+# ----------------------------- Filtro: min/max días por semana ----------------
+
+class TestMinMaxDiasSemana:
+    def _scenario_2x2(self, fake_conn):
+        # M1: lunes(100) / martes(101). M2: lunes(200) / martes(201).
+        # Horarios sin solapar dentro de un mismo día.
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=101, materia_codigo=1, catedra_id=10,
+                              dia="martes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(14, 0), hora_fin=time(16, 0)),
+            make_comision_row(comision_id=201, materia_codigo=2, catedra_id=20,
+                              dia="martes", hora_inicio=time(14, 0), hora_fin=time(16, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+
+    def test_dentro_del_rango_pasa(self, fake_conn):
+        # Plan de 2 materias en días distintos → 2 días, dentro de [2, 3].
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10, dia="lunes"),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20, dia="martes"),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)],
+                 min_dias_semana=2, max_dias_semana=3),
+        )
+        assert len(resp.planes) == 1
+
+    def test_max_dias_descarta_combos_con_mas_dias(self, fake_conn):
+        self._scenario_2x2(fake_conn)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)], max_dias_semana=1),
+        )
+        # Solo sobreviven combos que caen todos en un mismo día.
+        ids = sorted(tuple(sorted(op.cursos[0].id for op in p.opciones)) for p in resp.planes)
+        assert ids == [(100, 200), (101, 201)]
+
+    def test_min_dias_descarta_combos_con_menos_dias(self, fake_conn):
+        self._scenario_2x2(fake_conn)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)], min_dias_semana=2),
+        )
+        # Solo sobreviven combos repartidos en 2 días distintos.
+        ids = sorted(tuple(sorted(op.cursos[0].id for op in p.opciones)) for p in resp.planes)
+        assert ids == [(100, 201), (101, 200)]
+
+    def test_min_igual_max_exacto(self, fake_conn):
+        self._scenario_2x2(fake_conn)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)],
+                 min_dias_semana=2, max_dias_semana=2),
+        )
+        ids = sorted(tuple(sorted(op.cursos[0].id for op in p.opciones)) for p in resp.planes)
+        assert ids == [(100, 201), (101, 200)]
+
+    def test_none_no_filtra(self, fake_conn):
+        self._scenario_2x2(fake_conn)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)]),
+        )
+        assert len(resp.planes) == 4
+
+
+# ----------------------------- Filtro: min/max horas por día ------------------
+
+class TestMinMaxHorasDia:
+    def test_span_incluye_huecos_supera_max_descarta(self, fake_conn):
+        # Mismo día: 8-10 y 16-18 → span = 10h (la suma de duraciones sería 4h).
+        # Con max=6 debe descartar: confirma semántica de span, no de suma.
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(16, 0), hora_fin=time(18, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)], max_horas_dia=6.0),
+        )
+        assert resp.planes == []
+
+    def test_span_dentro_del_rango_pasa(self, fake_conn):
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(16, 0), hora_fin=time(18, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)],
+                 min_horas_dia=2.0, max_horas_dia=12.0),
+        )
+        assert len(resp.planes) == 1
+
+    def test_span_menor_al_min_descarta(self, fake_conn):
+        # Un solo bloque de 2h → span 2h; min=4 lo descarta.
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(10, 0), hora_fin=time(12, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1)], min_horas_dia=4.0),
+        )
+        assert resp.planes == []
+
+    def test_cada_dia_se_evalua_por_separado(self, fake_conn):
+        # Dos días con span 2h cada uno; max=3 → pasa (no se suma entre días).
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="martes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)], max_horas_dia=3.0),
+        )
+        assert len(resp.planes) == 1
+
+    def test_none_no_filtra(self, fake_conn):
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(10, 0)),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(18, 0), hora_fin=time(20, 0)),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        resp = armar_planes(
+            fake_conn,
+            _req([MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)]),
+        )
+        assert len(resp.planes) == 1
+
+
 # ----------------------------- Filtro: max_planes (cap) -----------------------
 
 class TestMaxPlanes:
@@ -695,6 +843,36 @@ class TestCombinaciones:
         # M2: 200 (13-15) sobrevive (no choca franja 15:30-16:30); 201 (17-19) descarta por franja? No, 17-19 vs 15:30-16:30 no solapan. Pasa también.
         # Combo (100, 200): mismo día, gap 1h, bache OK → ✓
         # Combo (100, 201): mismo día, gap 5h > 2h → ✗
+        ids = sorted(tuple(sorted(op.cursos[0].id for op in p.opciones)) for p in resp.planes)
+        assert ids == [(100, 200)]
+
+    def test_max_dias_mas_franja_mas_cupos(self, fake_conn):
+        comisiones = [
+            make_comision_row(comision_id=100, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(10, 0), hora_fin=time(12, 0), vacantes=10),
+            make_comision_row(comision_id=101, materia_codigo=1, catedra_id=10,
+                              dia="martes", hora_inicio=time(10, 0), hora_fin=time(12, 0), vacantes=10),
+            make_comision_row(comision_id=102, materia_codigo=1, catedra_id=10,
+                              dia="lunes", hora_inicio=time(8, 0), hora_fin=time(9, 0), vacantes=10),
+            make_comision_row(comision_id=200, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(14, 0), hora_fin=time(16, 0), vacantes=5),
+            make_comision_row(comision_id=201, materia_codigo=2, catedra_id=20,
+                              dia="lunes", hora_inicio=time(17, 0), hora_fin=time(19, 0), vacantes=0),
+        ]
+        setup_planes_db(fake_conn, comisiones)
+        franja = FranjaExcluida(dias=["lunes"], hora_inicio=time(7, 30), hora_fin=time(9, 30))
+        resp = armar_planes(
+            fake_conn,
+            _req(
+                [MateriaSeleccionada(codigo=1), MateriaSeleccionada(codigo=2)],
+                franjas_excluidas=[franja],
+                solo_con_cupos=True,
+                max_dias_semana=1,
+            ),
+        )
+        # M1: 102 cae en franja (descarta); quedan 100 (lunes) y 101 (martes).
+        # M2: 201 sin cupos (descarta); queda 200 (lunes).
+        # Combos: (100,200) → 1 día ✓; (101,200) → 2 días ✗ por max_dias=1.
         ids = sorted(tuple(sorted(op.cursos[0].id for op in p.opciones)) for p in resp.planes)
         assert ids == [(100, 200)]
 

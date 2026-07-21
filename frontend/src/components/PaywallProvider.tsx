@@ -107,7 +107,8 @@ const PAYWALL_COPY: Record<
   },
   filtros: {
     title: "Más filtros con Pro",
-    description: "Filtrar por franjas horarias, sedes y bache máximo es Pro.",
+    description:
+      "Filtrar por franjas horarias, sedes, bache máximo y límites de días y horas de cursada es Pro.",
   },
   favoritos: {
     title: "Guardá tus planes con Pro",
