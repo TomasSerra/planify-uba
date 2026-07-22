@@ -184,7 +184,9 @@ function PagoStatusDialog({
   let title: string;
   let body: string;
   if (error) {
-    icon = <AlertCircle className="size-12 text-destructive" strokeWidth={1.5} />;
+    icon = (
+      <AlertCircle className="size-12 text-destructive" strokeWidth={1.5} />
+    );
     title = "Error confirmando el pago";
     body = (error as Error).message;
   } else if (data?.status === "approved") {
@@ -199,7 +201,12 @@ function PagoStatusDialog({
     body =
       "Mercado Pago a veces tarda unos minutos. Cuando se acredite, vas a ver el chip Pro en el header.";
   } else {
-    icon = <Loader2 className="size-12 animate-spin text-primary" strokeWidth={1.5} />;
+    icon = (
+      <Loader2
+        className="size-12 animate-spin text-primary"
+        strokeWidth={1.5}
+      />
+    );
     title = "Confirmando tu pago…";
     body = "Esto puede tardar unos segundos.";
   }
@@ -211,7 +218,9 @@ function PagoStatusDialog({
           {icon}
           <DialogHeader className="mt-3 space-y-2 sm:text-center">
             <DialogTitle className="text-center">{title}</DialogTitle>
-            <DialogDescription className="text-center">{body}</DialogDescription>
+            <DialogDescription className="text-center">
+              {body}
+            </DialogDescription>
           </DialogHeader>
         </div>
       </DialogContent>
@@ -238,8 +247,11 @@ function SaveFavoriteButton({
 
   // Plan distinto = botón vuelve a estado inicial.
   const planKey = useMemo(
-    () => JSON.stringify(plan.opciones.map((o) => o.cursos.map((c) => c.id).sort())),
-    [plan]
+    () =>
+      JSON.stringify(
+        plan.opciones.map((o) => o.cursos.map((c) => c.id).sort()),
+      ),
+    [plan],
   );
   const [keyAtSave, setKeyAtSave] = useState<string | null>(null);
   const isSaved = savedId !== null && keyAtSave === planKey;
@@ -299,9 +311,7 @@ function SaveFavoriteButton({
       {busy ? (
         <Loader2 className="size-4 animate-spin" />
       ) : (
-        <Heart
-          className={"size-4 " + (isSaved ? "fill-current" : "")}
-        />
+        <Heart className={"size-4 " + (isSaved ? "fill-current" : "")} />
       )}
       {isSaved ? "Guardado" : "Guardar"}
     </Button>
@@ -405,7 +415,7 @@ export function Home() {
   const [materiasOpen, setMateriasOpen] = useState(true);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [calendarioCompacto, setCalendarioCompacto] = useState<boolean>(
-    () => localStorage.getItem("calendarioCompacto") === "1"
+    () => localStorage.getItem("calendarioCompacto") === "1",
   );
   useEffect(() => {
     localStorage.setItem("calendarioCompacto", calendarioCompacto ? "1" : "0");
@@ -442,7 +452,7 @@ export function Home() {
         decoded.hmin != null ||
         decoded.hmax != null ||
         decoded.m.some(
-          (x) => x.ca !== null || x.p !== null || (x.se ?? null) !== null
+          (x) => x.ca !== null || x.p !== null || (x.se ?? null) !== null,
         ));
     const safeDecoded = proFiltersInUrl
       ? {
@@ -502,7 +512,7 @@ export function Home() {
           safeDecoded.s,
           bache,
           sc,
-          rangos
+          rangos,
         );
       } catch {
         setError(true);
@@ -555,10 +565,7 @@ export function Home() {
   const lastCarreraRef = useRef<string | null>(null);
   useEffect(() => {
     if (!carreraActual) return;
-    if (
-      lastCarreraRef.current &&
-      lastCarreraRef.current !== carreraActual
-    ) {
+    if (lastCarreraRef.current && lastCarreraRef.current !== carreraActual) {
       setMaterias([]);
       setSedesPermitidas([]);
       setResultado(null);
@@ -598,11 +605,12 @@ export function Home() {
       minHorasDia,
       maxHorasDia,
       soloCupos,
-    ]
+    ],
   );
 
   const sinCambios =
-    lastGeneratedSignature !== null && currentSignature === lastGeneratedSignature;
+    lastGeneratedSignature !== null &&
+    currentSignature === lastGeneratedSignature;
 
   // Si el form actual tiene filtros Pro y el usuario no es Pro, no dejamos
   // disparar "Generar" — el backend rechazaría con 403 igual, pero acá lo
@@ -616,7 +624,7 @@ export function Home() {
     minDiasSemana,
     maxDiasSemana,
     minHorasDia,
-    maxHorasDia
+    maxHorasDia,
   );
   const proFiltersBlocked = !isPaid && !subLoading && formUsesProFilters;
 
@@ -650,7 +658,7 @@ export function Home() {
       maxDias: number | null;
       minHoras: number | null;
       maxHoras: number | null;
-    }
+    },
   ) {
     if (seleccion.length === 0) return;
     setLoading(true);
@@ -664,12 +672,14 @@ export function Home() {
         : null;
       const data = await api.postPlanes(
         {
-          materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
-            codigo,
-            catedra_id,
-            profesores,
-            sede: sede ?? null,
-          })),
+          materias: seleccion.map(
+            ({ codigo, catedra_id, profesores, sede }) => ({
+              codigo,
+              catedra_id,
+              profesores,
+              sede: sede ?? null,
+            }),
+          ),
           dias_excluidos,
           franjas_excluidas: franjasExcl,
           sedes_permitidas: sedes,
@@ -681,7 +691,7 @@ export function Home() {
           max_planes: isPaid ? PRO_MAX_PLANES : FREE_MAX_PLANES,
           solo_con_cupos: solo,
         },
-        token
+        token,
       );
       scrollOnNextResultRef.current = true;
       setResultado(data);
@@ -726,12 +736,14 @@ export function Home() {
       if (data.planes.length > 0) {
         pushHistory(uid, {
           request: {
-            materias: seleccion.map(({ codigo, catedra_id, profesores, sede }) => ({
-              codigo,
-              catedra_id,
-              profesores,
-              sede: sede ?? null,
-            })),
+            materias: seleccion.map(
+              ({ codigo, catedra_id, profesores, sede }) => ({
+                codigo,
+                catedra_id,
+                profesores,
+                sede: sede ?? null,
+              }),
+            ),
             dias_excluidos,
             franjas_excluidas: franjasExcl,
             sedes_permitidas: sedes,
@@ -806,7 +818,7 @@ export function Home() {
         maxDias: maxDiasSemana,
         minHoras: minHorasDia,
         maxHoras: maxHorasDia,
-      }
+      },
     );
   }
 
@@ -849,7 +861,7 @@ export function Home() {
       sede: m.sede ?? null,
     }));
     const dias = ALL_DIAS.filter(
-      (d) => !entry.filters.dias_excluidos.includes(d)
+      (d) => !entry.filters.dias_excluidos.includes(d),
     );
     const bache = entry.filters.max_bache_horas ?? null;
     const solo = entry.filters.solo_con_cupos ?? false;
@@ -890,7 +902,7 @@ export function Home() {
         minHorasDia: rangos.minHoras,
         maxHorasDia: rangos.maxHoras,
         soloCupos: solo,
-      })
+      }),
     );
     setLastGeneratedFilters(entry.filters);
     const q = encodeUrlState({
@@ -968,8 +980,8 @@ export function Home() {
       {loading
         ? "Generando..."
         : proFiltersBlocked
-        ? "Hacete Pro para generar"
-        : "Generar planes"}
+          ? "Hacete Pro para generar"
+          : "Generar planes"}
     </Button>
   );
 
@@ -993,8 +1005,7 @@ export function Home() {
             Generador de planes de cursada
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Armá tu cuatrimestre en la Facultad de Psicología (UBA): combiná
-            materias, cátedras y profesores sin superposiciones.
+            Planificá tu cuatrimestre, combiná materias sin superposiciones
           </p>
         </div>
         <div
@@ -1011,7 +1022,9 @@ export function Home() {
               {!isAuthenticated && <CarreraSelector />}
               <div className="relative flex-1">
                 <Card className="flex flex-col wide:absolute wide:inset-0">
-                  <CardHeader className={materiasOpen ? undefined : "pb-6 wide:pb-4"}>
+                  <CardHeader
+                    className={materiasOpen ? undefined : "pb-6 wide:pb-4"}
+                  >
                     <button
                       type="button"
                       onClick={() => setMateriasOpen((v) => !v)}
@@ -1039,14 +1052,17 @@ export function Home() {
                       " flex-col gap-4 wide:min-h-0 wide:flex-1"
                     }
                   >
-                    <MateriaSelector selected={materias} onChange={setMaterias} />
+                    <MateriaSelector
+                      selected={materias}
+                      onChange={setMaterias}
+                    />
                   </CardContent>
                 </Card>
               </div>
             </div>
           </div>
 
-          <Card className="flex min-h-0 flex-col overflow-hidden wide:row-span-2 wide:sticky wide:top-6 wide:max-h-[calc(100dvh-9rem)]">
+          <Card className="flex min-h-0 flex-col overflow-hidden wide:row-span-2 wide:sticky wide:top-6 wide:max-h-[calc(100dvh-13.75rem)]">
             <CardHeader className={filtrosOpen ? undefined : "pb-6 wide:pb-4"}>
               <div className="flex items-center justify-between gap-3">
                 <button
@@ -1124,7 +1140,12 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className={"hidden gap-3 wide:flex " + (resultado === null ? "mt-auto wide:mt-0" : "")}>
+          <div
+            className={
+              "hidden gap-3 wide:flex " +
+              (resultado === null ? "mt-auto wide:mt-0" : "")
+            }
+          >
             <div className="hidden size-10 shrink-0 wide:block" aria-hidden />
             <div className="flex flex-1 flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:justify-between wide:gap-4">
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -1180,7 +1201,10 @@ export function Home() {
         )}
 
         {loading && (
-          <Card ref={calendarioRef} className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl">
+          <Card
+            ref={calendarioRef}
+            className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl"
+          >
             <CardHeader>
               <CardTitle>Calendario</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -1194,7 +1218,10 @@ export function Home() {
         )}
 
         {!loading && resultado && resultado.planes.length > 0 && (
-          <Card ref={calendarioRef} className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl">
+          <Card
+            ref={calendarioRef}
+            className="-mx-4 rounded-none wide:mx-0 wide:rounded-2xl"
+          >
             <CardHeader className="flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:justify-between">
               <div>
                 <CardTitle>Calendario</CardTitle>
