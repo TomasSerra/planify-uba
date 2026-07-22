@@ -1000,13 +1000,18 @@ export function Home() {
       <Header />
 
       <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-4 sm:px-6 wide:pb-8 wide:block">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Generador de planes de cursada
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Planificá tu cuatrimestre, combiná materias sin superposiciones
-          </p>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">
+              Generador de planes de cursada
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Planificá tu cuatrimestre, combiná materias sin superposiciones
+            </p>
+          </div>
+          <div className="hidden shrink-0 wide:block">
+            <HistorialPopover onRestore={restoreFromHistory} />
+          </div>
         </div>
         <div
           className={
@@ -1015,7 +1020,7 @@ export function Home() {
           }
         >
           <div className="flex shrink-0 flex-col gap-3 wide:flex-row">
-            <div className="flex justify-end">
+            <div className="flex justify-end wide:hidden">
               <HistorialPopover onRestore={restoreFromHistory} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -1189,12 +1194,13 @@ export function Home() {
                 <span className="font-medium">
                   {materiasNombres(resultado!.materias_sin_opciones)}
                 </span>
-                . Probá relajar días, franjas, cátedra o profesores.
+                . Probá cambiar los filtros de días, franjas, cátedra o
+                profesores.
               </p>
             ) : (
               <p className="mt-1 text-amber-800">
                 Todas las combinaciones se solapan entre sí. Probá quitar alguna
-                materia o relajar restricciones.
+                materia o cambiar filtros.
               </p>
             )}
           </div>
@@ -1282,7 +1288,7 @@ export function Home() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur wide:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="container flex items-center gap-2 px-4 py-3">
+        <div className="container flex items-center gap-2 px-4 pt-3 pb-5">
           {limpiarBtn}
           {generarBtn}
         </div>

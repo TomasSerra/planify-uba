@@ -11,7 +11,6 @@ import {
   removeHistory,
 } from "@/lib/planHistory";
 import { useAuth } from "@/lib/useAuth";
-import { useIsWide } from "@/lib/useIsWide";
 import { useSubscription } from "@/lib/useSubscription";
 import type { PlanHistoryEntry } from "@/lib/types";
 
@@ -37,7 +36,6 @@ export function HistorialPopover({
 }) {
   const { user } = useAuth();
   const { isPaid } = useSubscription();
-  const isWide = useIsWide();
   const uid = user?.uid ?? null;
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<PlanHistoryEntry[]>(() =>
@@ -66,15 +64,15 @@ export function HistorialPopover({
         <button
           type="button"
           aria-label="Historial de planes generados"
-          className="flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-lg border border-border bg-white px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent max-sm:min-h-[44px] lg:w-10 lg:px-0"
+          className="flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-lg border border-border bg-white px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent max-sm:min-h-[44px]"
         >
           <Clock className="size-4" />
-          <span className="lg:hidden">Historial</span>
+          <span>Historial</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
         side="bottom"
-        align={isWide ? "start" : "end"}
+        align="end"
         sideOffset={8}
         className="max-w-[calc(100vw-2rem)] p-2 max-sm:w-[calc(100vw-2rem)] sm:w-[20rem]"
       >

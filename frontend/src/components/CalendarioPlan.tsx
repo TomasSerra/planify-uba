@@ -117,6 +117,13 @@ interface CursoBloqueProps {
   height: number;
 }
 
+// Semáforo de cupos: rojo ≤10, amarillo ≤30, verde >30.
+function cuposColor(cupos: number): string {
+  if (cupos <= 10) return "text-red-600";
+  if (cupos <= 30) return "text-amber-600";
+  return "text-green-600";
+}
+
 function CursoDetalle({
   curso,
   size = "popover",
@@ -172,7 +179,7 @@ function CursoDetalle({
         </div>
       )}
       {curso.cuposRestantes != null && curso.cuposRestantes > 0 && (
-        <div className={textCls}>
+        <div className={cn(textCls, cuposColor(curso.cuposRestantes))}>
           <Users className={cn("shrink-0", iconSize)} />
           <span>
             {curso.cuposRestantes}{" "}
