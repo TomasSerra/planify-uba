@@ -404,8 +404,8 @@ export function RestriccionesPanel({
               </div>
               {franjas.length === 0 ? (
                 <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-                  Sin franjas bloqueadas. Una franja se aplica a uno o varios
-                  días con el mismo rango horario.
+                  Podes bloquear franjas horarias en las que no queres cursar
+                  materias
                 </p>
               ) : (
                 <div className="space-y-2">

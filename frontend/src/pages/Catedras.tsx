@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
   useQuery,
@@ -40,9 +40,19 @@ function catedraLabel(item: CatedraRankItem): string {
   return item.titular ? `${base} · ${item.titular}` : base;
 }
 
-function RankCard({ item }: { item: CatedraRankItem }) {
+function RankCard({
+  item,
+  recommendationsPath,
+}: {
+  item: CatedraRankItem;
+  recommendationsPath: string;
+}) {
   return (
-    <Link to={`/catedras/${item.catedra_id}`} className="block">
+    <Link
+      to={`/catedras/${item.catedra_id}`}
+      state={{ recommendationsPath }}
+      className="block"
+    >
       <Card className="transition-colors hover:border-primary/40 hover:bg-accent/40">
         <CardContent className="flex items-center gap-3 p-3">
           <div className="min-w-0 flex-1">
@@ -81,22 +91,65 @@ function RankCard({ item }: { item: CatedraRankItem }) {
 export function Catedras() {
   const { carrera } = useCareer();
   const queryClient = useQueryClient();
-  const [searchInput, setSearchInput] = useState("");
-  const [q, setQ] = useState("");
-  const [sort, setSort] = useState<ReviewSort>("mejores");
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get("q")?.trim() ?? "";
+  const sort =
+    SORT_OPTIONS.find((option) => option.value === searchParams.get("sort"))
+      ?.value ?? "mejores";
+  const [searchInput, setSearchInput] = useState(q);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const previousCarrera = useRef<typeof carrera>();
+  const pageParam = Number(searchParams.get("page"));
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+  const search = searchParams.toString();
+  const recommendationsPath = `/recomendaciones${search ? `?${search}` : ""}`;
+
+  const updatePage = useCallback(
+    (nextPage: number, replace = false) => {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set("page", String(nextPage));
+          return next;
+        },
+        { replace }
+      );
+    },
+    [setSearchParams]
+  );
+
+  useEffect(() => {
+    setSearchInput(q);
+  }, [q]);
 
   // Debounce de la búsqueda: no pegamos al BE en cada tecla.
   useEffect(() => {
-    const t = setTimeout(() => setQ(searchInput.trim()), 300);
+    const t = setTimeout(() => {
+      const nextQ = searchInput.trim();
+      if (nextQ !== q) {
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current);
+            if (nextQ) next.set("q", nextQ);
+            else next.delete("q");
+            next.set("page", "1");
+            return next;
+          },
+          { replace: true }
+        );
+      }
+    }, 300);
     return () => clearTimeout(t);
-  }, [searchInput]);
+  }, [q, searchInput, setSearchParams]);
 
-  // Cualquier cambio de filtro/orden vuelve a la página 1.
+  // La carga inicial de la carrera no debe pisar una página restaurada desde la URL.
   useEffect(() => {
-    setPage(1);
-  }, [q, sort, carrera]);
+    if (!carrera) return;
+    if (previousCarrera.current && previousCarrera.current !== carrera) {
+      updatePage(1, true);
+    }
+    previousCarrera.current = carrera;
+  }, [carrera, updatePage]);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["catedras-rank", carrera, q, sort, page],
@@ -160,7 +213,20 @@ export function Catedras() {
               aria-label="Buscar cátedras"
             />
           </div>
-          <Select value={sort} onValueChange={(v) => setSort(v as ReviewSort)}>
+          <Select
+            value={sort}
+            onValueChange={(v) => {
+              setSearchParams(
+                (current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("sort", v);
+                  next.set("page", "1");
+                  return next;
+                },
+                { replace: true }
+              );
+            }}
+          >
             <SelectTrigger className="sm:w-52" aria-label="Ordenar">
               <SelectValue />
             </SelectTrigger>
@@ -214,7 +280,11 @@ export function Catedras() {
                 )}
               >
                 {data.items.map((item) => (
-                  <RankCard key={item.catedra_id} item={item} />
+                  <RankCard
+                    key={item.catedra_id}
+                    item={item}
+                    recommendationsPath={recommendationsPath}
+                  />
                 ))}
               </div>
             )}
@@ -223,7 +293,7 @@ export function Catedras() {
               page={page}
               totalPages={totalPages}
               onPageChange={(p) => {
-                setPage(p);
+                updatePage(p);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             />

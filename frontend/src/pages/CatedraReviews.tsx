@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -270,12 +270,17 @@ function ProfesoresFilter({
 
 export function CatedraReviews() {
   const { catedraId } = useParams();
+  const location = useLocation();
   const id = Number(catedraId);
   const { isAuthenticated, getAccessTokenSilently } = useAuth();
   const { isPaid } = useSubscription();
   const openPaywall = usePaywall();
   const queryClient = useQueryClient();
   const showAlert = useAlert();
+  const recommendationsPath =
+    typeof location.state?.recommendationsPath === "string"
+      ? location.state.recommendationsPath
+      : "/recomendaciones";
 
   const [page, setPage] = useState(1);
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
@@ -401,7 +406,7 @@ export function CatedraReviews() {
 
       <main className="container max-w-6xl space-y-5 px-4 pb-8 pt-6 sm:px-6">
         <Link
-          to="/recomendaciones"
+          to={recommendationsPath}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -426,7 +431,7 @@ export function CatedraReviews() {
                   </p>
                   <p>Puede que ya no esté disponible.</p>
                   <Button asChild variant="outline" size="sm">
-                    <Link to="/recomendaciones">Volver a Cátedras</Link>
+                    <Link to={recommendationsPath}>Volver a Cátedras</Link>
                   </Button>
                 </div>
               ) : (

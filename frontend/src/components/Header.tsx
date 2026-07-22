@@ -76,7 +76,8 @@ function useTabs() {
 // de cátedra, que vive en /catedras/:id.
 function isTabActive(pathname: string, to: string): boolean {
   if (to === "/") return pathname === "/";
-  if (to === "/recomendaciones" && pathname.startsWith("/catedras/")) return true;
+  if (to === "/recomendaciones" && pathname.startsWith("/catedras/"))
+    return true;
   return pathname === to || pathname.startsWith(to + "/");
 }
 
@@ -91,7 +92,7 @@ function Tabs() {
   const { pathname } = useLocation();
   const TABS = useTabs();
   return (
-    <nav className="hidden items-center gap-4 wide:flex">
+    <nav className="hidden items-center gap-4 min-[1140px]:flex">
       {TABS.map(({ to, label, icon: Icon }) => {
         const active = isTabActive(pathname, to);
         return (
@@ -128,7 +129,7 @@ function MobileMenu() {
         <button
           type="button"
           aria-label="Abrir menú"
-          className="flex size-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent wide:hidden"
+          className="flex size-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent min-[1140px]:hidden"
         >
           <Menu className="size-6" />
         </button>
@@ -193,7 +194,7 @@ function PayChip() {
       className="bg-[#EC990B] text-white hover:bg-[#EC990B]/90"
     >
       <Gem className="size-4" />
-      <span className="hidden wide:inline">Hacete Pro</span>
+      <span className="hidden min-[1140px]:inline">Hacete Pro</span>
     </Button>
   );
 }
@@ -225,7 +226,7 @@ function UserMenu() {
         <PayChip />
         <Button variant="outline" size="sm" onClick={() => openLogin("signin")}>
           <LogIn className="size-4" />
-          <span className="hidden wide:inline">Iniciar sesión</span>
+          <span className="hidden min-[1140px]:inline">Iniciar sesión</span>
         </Button>
       </div>
     );
@@ -242,9 +243,9 @@ function UserMenu() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent wide:gap-2 wide:rounded-2xl wide:border wide:border-border wide:bg-white wide:py-1 wide:pl-3 wide:pr-1"
+            className="relative flex cursor-pointer items-center rounded-full transition-colors hover:bg-accent min-[1140px]:gap-2 min-[1140px]:rounded-2xl min-[1140px]:border min-[1140px]:border-border min-[1140px]:bg-white min-[1140px]:py-1 min-[1140px]:pl-3 min-[1140px]:pr-1"
           >
-            <div className="hidden flex-col leading-tight wide:flex text-left">
+            <div className="hidden flex-col text-left leading-tight min-[1140px]:flex">
               <div className="flex max-w-[12rem] flex-col">
                 <span className="truncate text-xs text-foreground">
                   {displayName}
@@ -285,7 +286,9 @@ function UserMenu() {
                 {nombre}
               </div>
             )}
-            <div className="truncate text-xs text-muted-foreground">{email}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {email}
+            </div>
             {isPaid && validUntilFormatted && (
               <div className="mt-0.5 text-[10px] font-medium text-[#EC990B]">
                 Pro hasta {validUntilFormatted}
@@ -383,17 +386,17 @@ function CambiarCarreraButton({ onClicked }: { onClicked: () => void }) {
 export function Header() {
   return (
     <header className="border-b border-border bg-card">
-      <div className="container flex items-center gap-2 py-4 wide:gap-4">
+      <div className="container grid grid-cols-[auto_auto_1fr] items-center gap-2 py-4 min-[1140px]:gap-4">
         <MobileMenu />
-        <Link to="/" className="flex flex-none items-center">
+        <Link to="/" className="flex flex-none items-center justify-self-start">
           <img
             src="/logo.png"
             alt="Planify"
-            className="h-9 w-auto shrink-0 object-contain wide:h-12"
+            className="h-9 w-auto shrink-0 object-contain min-[1140px]:h-12"
           />
         </Link>
         <Tabs />
-        <div className="flex flex-1 justify-end">
+        <div className="flex justify-end min-[1140px]:justify-self-end">
           <UserMenu />
         </div>
       </div>

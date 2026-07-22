@@ -1151,7 +1151,6 @@ export function Home() {
               (resultado === null ? "mt-auto wide:mt-0" : "")
             }
           >
-            <div className="hidden size-10 shrink-0 wide:block" aria-hidden />
             <div className="flex flex-1 flex-col items-stretch gap-3 wide:flex-row wide:items-center wide:justify-between wide:gap-4">
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 {materias.length === 0 ? (
