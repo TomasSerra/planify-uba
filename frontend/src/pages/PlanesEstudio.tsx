@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Loader2, X, ZoomIn } from "lucide-react";
 import { Header } from "@/components/Header";
+import { Seo } from "@/components/Seo";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -111,7 +112,10 @@ function CarreraAccordion({
       </button>
       {open && (
         <div className="border-t border-border bg-muted/30 p-4 sm:p-6">
-          <PlanImagen src={imagen} alt={`Plan de estudios ${nombre}`} />
+          <PlanImagen
+            src={imagen}
+            alt={`Plan de estudios de ${nombre} — Facultad de Psicología UBA`}
+          />
         </div>
       )}
     </Card>
@@ -149,12 +153,17 @@ export function PlanesEstudio() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Planes de estudio por carrera — Psicología UBA | Planify"
+        description="Mapa de materias y correlatividades de las carreras de la Facultad de Psicología (UBA): Licenciatura en Psicología, Profesorado, Musicoterapia y Terapia Ocupacional."
+        path="/planes-estudio"
+      />
       <Header />
       <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h1 className="text-xl font-semibold tracking-tight">
             {showSinglePlan ? "Plan de estudio" : "Planes de estudio"}
-          </h2>
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {showSinglePlan
               ? carreraNombre ?? "Mapa de materias"
@@ -170,7 +179,9 @@ export function PlanesEstudio() {
           <Card className="p-4 sm:p-6">
             <PlanImagen
               src={PLAN_IMAGES[carrera]}
-              alt={`Plan de estudios ${carreraNombre ?? carrera}`}
+              alt={`Plan de estudios de ${
+                carreraNombre ?? carrera
+              } — Facultad de Psicología UBA`}
             />
           </Card>
         ) : authSinPlan ? (

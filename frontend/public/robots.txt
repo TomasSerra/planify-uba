@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /favoritos
+Disallow: /pago-exitoso
+Disallow: /pago-error
+
+Sitemap: https://planify-uba.vercel.app/sitemap.xml

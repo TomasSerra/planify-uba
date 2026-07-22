@@ -15,6 +15,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { Pagination } from "@/components/ui/pagination";
 import { StarRating } from "@/components/StarRating";
 import { ReviewDialog } from "@/components/ReviewDialog";
+import { Seo } from "@/components/Seo";
 import {
   Select,
   SelectContent,
@@ -120,14 +121,19 @@ export function Catedras() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Recomendaciones de cátedras y profesores — Psicología UBA | Planify"
+        description="Reseñas y puntuaciones de la comunidad sobre cátedras y profesores de la Facultad de Psicología (UBA). Buscá una cátedra antes de anotarte y elegí con recomendaciones reales de estudiantes."
+        path="/recomendaciones"
+      />
       <Header />
 
       <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight">
               Recomendaciones
-            </h2>
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Reseñas de la comunidad. Buscá una cátedra antes de anotarte o
               dejá la tuya.

@@ -4,16 +4,97 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#861f5c" />
+
+    <title>Planify | Generá tus planes de cursada — Psicología UBA</title>
+    <meta
+      name="description"
+      content="Planify arma tu plan de cursada en la Facultad de Psicología (UBA): combiná materias, cátedras y profesores sin superposiciones, filtrá por días, franjas y sedes, y leé recomendaciones de la comunidad. Para las 4 carreras: Psicología, Profesorado, Musicoterapia y Terapia Ocupacional."
+    />
+    <link rel="canonical" href="https://planify-uba.vercel.app/" />
+
+    <!-- Open Graph / redes sociales (default para links compartidos). El meta
+         por ruta lo inyecta react-helmet-async en runtime. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Planify" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:title" content="Planify | Planificá tu cursada en Psicología UBA" />
+    <meta
+      property="og:description"
+      content="Combiná materias, cátedras y profesores sin superposiciones y armá tu cuatrimestre en la Facultad de Psicología (UBA)."
+    />
+    <meta property="og:url" content="https://planify-uba.vercel.app/" />
+    <meta property="og:image" content="https://planify-uba.vercel.app/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Planify | Planificá tu cursada en Psicología UBA" />
+    <meta
+      name="twitter:description"
+      content="Combiná materias, cátedras y profesores sin superposiciones y armá tu cuatrimestre en la Facultad de Psicología (UBA)."
+    />
+    <meta name="twitter:image" content="https://planify-uba.vercel.app/og-image.png" />
+
+    <!-- TODO(SEO): pegar acá el tag que da Google Search Console al verificar la
+         propiedad. -->
+    <!-- <meta name="google-site-verification" content="..." /> -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Planify | Planifica tu cursada</title>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://planify-uba.vercel.app/#organization",
+            "name": "Planify",
+            "url": "https://planify-uba.vercel.app/",
+            "logo": "https://planify-uba.vercel.app/logo.png",
+            "sameAs": [
+              "https://www.instagram.com/planify.uni/",
+              "https://www.tiktok.com/@planify.uni"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://planify-uba.vercel.app/#website",
+            "url": "https://planify-uba.vercel.app/",
+            "name": "Planify",
+            "inLanguage": "es-AR",
+            "publisher": { "@id": "https://planify-uba.vercel.app/#organization" },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://planify-uba.vercel.app/recomendaciones?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <h1>Planify — Planificá tu cursada en la Facultad de Psicología (UBA)</h1>
+        <p>
+          Planify te ayuda a armar tu plan de cursada combinando materias,
+          cátedras y profesores sin superposiciones de horario. Filtrá por días,
+          franjas horarias y sedes, mirá los planes de estudio de cada carrera y
+          leé recomendaciones y reseñas de cátedras y profesores de la comunidad.
+          Cubre las cuatro carreras de la facultad: Licenciatura en Psicología,
+          Profesorado en Psicología, Licenciatura en Musicoterapia y Licenciatura
+          en Terapia Ocupacional.
+        </p>
+        <p>Necesitás JavaScript activado para usar la aplicación.</p>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { StarRating } from "@/components/StarRating";
 import { ReviewDialog } from "@/components/ReviewDialog";
+import { Seo } from "@/components/Seo";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { useSubscription } from "@/lib/useSubscription";
@@ -442,14 +443,52 @@ export function CatedraReviews() {
 
         {!isError && data && (
           <>
+            <Seo
+              title={`${data.catedra.materia_nombre} · ${catedraSubtitulo(
+                data.catedra
+              )} — Reseñas | Planify`}
+              description={`Reseñas y puntuaciones de la comunidad sobre ${
+                data.catedra.materia_nombre
+              } (${catedraSubtitulo(data.catedra)}) en la Facultad de Psicología (UBA)${
+                data.avg_rating != null
+                  ? `. Promedio ${data.avg_rating.toFixed(1)}/5 en ${
+                      data.review_count
+                    } ${data.review_count === 1 ? "reseña" : "reseñas"}`
+                  : ""
+              }.`}
+              path={`/catedras/${id}`}
+              jsonLd={
+                data.avg_rating != null && data.review_count > 0
+                  ? {
+                      "@context": "https://schema.org",
+                      "@type": "Course",
+                      name: `${data.catedra.materia_nombre} · ${catedraSubtitulo(
+                        data.catedra
+                      )}`,
+                      description: `Cátedra de ${data.catedra.materia_nombre} en la Facultad de Psicología (UBA).`,
+                      provider: {
+                        "@type": "Organization",
+                        name: "Facultad de Psicología, Universidad de Buenos Aires",
+                      },
+                      aggregateRating: {
+                        "@type": "AggregateRating",
+                        ratingValue: data.avg_rating.toFixed(1),
+                        reviewCount: data.review_count,
+                        bestRating: 5,
+                        worstRating: 1,
+                      },
+                    }
+                  : undefined
+              }
+            />
             {/* Cabecera: materia + cátedra + promedio + distribución */}
             <Card>
               <CardContent className="p-5 sm:p-6">
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold leading-tight">
+                    <h1 className="text-lg font-semibold leading-tight">
                       {data.catedra.materia_nombre}
-                    </p>
+                    </h1>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {catedraSubtitulo(data.catedra)}
                     </p>

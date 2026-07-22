@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarioPlan, PlanLeyenda } from "@/components/CalendarioPlan";
 import { ErrorState } from "@/components/ErrorState";
 import { Header } from "@/components/Header";
+import { Seo } from "@/components/Seo";
 import { api } from "@/lib/api";
 import { useSubscription } from "@/lib/useSubscription";
 import { useAlert } from "@/lib/alert";
@@ -222,13 +223,19 @@ export function Favoritos() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Planes guardados | Planify"
+        description="Tus combinaciones de cursada favoritas guardadas en Planify."
+        path="/favoritos"
+        noindex
+      />
       <Header />
 
       <main className="container max-w-6xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h1 className="text-xl font-semibold tracking-tight">
             Planes guardados
-          </h2>
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Tus combinaciones favoritas
           </p>

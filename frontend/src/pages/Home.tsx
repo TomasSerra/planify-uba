@@ -34,6 +34,7 @@ import { CalendarioPlan } from "@/components/CalendarioPlan";
 import { CalendarioPlanSkeleton } from "@/components/CalendarioPlanSkeleton";
 import { PlanNavigator } from "@/components/PlanNavigator";
 import { Header } from "@/components/Header";
+import { Seo } from "@/components/Seo";
 import { HistorialPopover } from "@/components/HistorialPopover";
 import { FREE_MAX_PLANES, PRO_MAX_PLANES } from "@/components/PaywallProvider";
 import { api } from "@/lib/api";
@@ -974,6 +975,11 @@ export function Home() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
+      <Seo
+        title="Planify | Generá tus planes de cursada — Psicología UBA"
+        description="Armá tu cuatrimestre en la Facultad de Psicología (UBA): combiná materias, cátedras y profesores sin superposiciones, filtrá por días, franjas y sedes, y generá todos los planes de cursada válidos."
+        path="/"
+      />
       <PagoErrorDialog state={pagoError} onClose={() => setPagoError(null)} />
       <PagoStatusDialog
         externalReference={pagoExternalRef}
@@ -982,6 +988,15 @@ export function Home() {
       <Header />
 
       <main className="container flex flex-1 flex-col space-y-6 px-4 pb-24 pt-4 sm:px-6 wide:pb-8 wide:block">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Generador de planes de cursada
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Armá tu cuatrimestre en la Facultad de Psicología (UBA): combiná
+            materias, cátedras y profesores sin superposiciones.
+          </p>
+        </div>
         <div
           className={
             "flex flex-col gap-3 wide:grid wide:gap-6 wide:grid-cols-[1.1fr_1fr] wide:grid-rows-[1fr_auto] " +

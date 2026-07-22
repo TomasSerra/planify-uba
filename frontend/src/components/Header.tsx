@@ -142,7 +142,7 @@ function MobileMenu() {
           <SheetTitle className="sr-only">Menú</SheetTitle>
           <img
             src="/logo.png"
-            alt="Horarios"
+            alt="Planify"
             className="h-9 w-auto max-w-full shrink-0 object-contain"
           />
         </div>
@@ -388,7 +388,7 @@ export function Header() {
         <Link to="/" className="flex flex-none items-center">
           <img
             src="/logo.png"
-            alt="Horarios"
+            alt="Planify"
             className="h-9 w-auto shrink-0 object-contain wide:h-12"
           />
         </Link>

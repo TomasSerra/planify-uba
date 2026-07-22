@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/gen-sitemap.mjs && tsc -b && vite build",
     "preview": "vite preview --host",
     "lint": "tsc --noEmit"
   },
@@ -27,6 +27,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-helmet-async": "^2.0.5",
     "react-router-dom": "^6.27.0",
     "tailwind-merge": "^2.5.5",
     "vaul": "^1.1.2"
