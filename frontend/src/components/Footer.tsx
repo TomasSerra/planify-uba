@@ -1,4 +1,4 @@
-import { Headset, Instagram, Mail, Undo2 } from "lucide-react";
+import { Headset, Instagram, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
