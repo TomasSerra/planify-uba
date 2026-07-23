@@ -483,13 +483,19 @@ function PlanCard({
   );
 }
 
-function ComparisonCell({ value, isPro }: { value: boolean | string; isPro: boolean }) {
+function ComparisonCell({
+  value,
+  isPro,
+}: {
+  value: boolean | string;
+  isPro: boolean;
+}) {
   if (typeof value === "string") {
     return (
       <span
         className={cn(
           "text-sm font-semibold",
-          isPro ? "text-[#EC990B]" : "text-foreground",
+          isPro ? "text-[#EC990B]" : "text-muted-foreground font-normal",
         )}
       >
         {value}
@@ -505,31 +511,31 @@ function ComparisonCell({ value, isPro }: { value: boolean | string; isPro: bool
       strokeWidth={2.5}
     />
   ) : (
-    <X
-      className="mx-auto size-5 text-muted-foreground/60"
-      strokeWidth={2.5}
-    />
+    <X className="mx-auto size-5 text-red-500" strokeWidth={2.5} />
   );
 }
 
 function ComparisonTable() {
   return (
-    <div className="rounded-xl border">
+    <div className="relative mt-4 rounded-xl border sm:mt-2">
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
-            <th className="border-b px-3 py-3 text-left font-medium text-muted-foreground" />
-            <th className="border-b px-2 py-3 text-center align-top w-[20%]">
+            <th className="border-b px-3 py-3 sm:pt-5 text-left font-medium text-muted-foreground" />
+            <th className="border-b px-2 py-3 sm:pt-5 text-center align-top w-[20%]">
               <div className="font-semibold">Gratis</div>
               <div className="text-sm">$0</div>
             </th>
-            <th className="w-[30%] rounded-t-xl border-x-2 border-t-2 border-[#EC990B] bg-[#EC990B]/10 px-2 py-3 text-center align-top">
+            <th className="relative w-[30%] rounded-t-xl border-x-2 border-t-2 border-[#EC990B] bg-[#EC990B]/10 px-2 py-3 sm:pt-5 text-center align-top">
+              <span className="pointer-events-none absolute left-1/2 top-[-4px] hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#EC990B] px-3 py-2 text-sm font-semibold text-white sm:block">
+                Oferta lanzamiento
+              </span>
               <div className="flex items-center justify-center gap-1 font-semibold text-[#EC990B]">
                 <Gem className="size-3.5" />
                 Pro
               </div>
               <div>
-                <span className="text-sm font-bold text-[#EC990B]">
+                <span className="text-sm font-bold text-foreground">
                   ${formattedPrice}
                 </span>
                 <span className="ml-1 block text-xs font-normal text-muted-foreground md:inline">
@@ -553,10 +559,7 @@ function ComparisonTable() {
                   {row.label}
                 </td>
                 <td
-                  className={cn(
-                    "px-2 py-3 text-center",
-                    !isLast && "border-b",
-                  )}
+                  className={cn("px-2 py-3 text-center", !isLast && "border-b")}
                 >
                   <ComparisonCell value={row.free} isPro={false} />
                 </td>
