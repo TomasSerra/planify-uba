@@ -11,6 +11,7 @@ from typing import Literal
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
 from .auth import AuthUser, current_user
@@ -172,6 +173,31 @@ def _verify_mp_signature(
     return True
 
 
+def _fees_from_payment(payment: dict) -> tuple[float | None, float | None, list | None]:
+    """(comisión que nos descuentan, neto acreditado, fee_details crudo).
+
+    Solo cuentan las fees con fee_payer=collector: las que paga el comprador
+    (financiación en cuotas) no salen de lo que nos acreditan. Si MP no mandó
+    fee_details devolvemos None en vez de 0 para no registrar una comisión
+    inventada.
+    """
+    fee_details = payment.get("fee_details")
+    if fee_details:
+        fee = round(
+            sum(
+                float(d.get("amount") or 0)
+                for d in fee_details
+                if d.get("fee_payer") == "collector"
+            ),
+            2,
+        )
+    else:
+        fee = None
+        fee_details = None
+    net = (payment.get("transaction_details") or {}).get("net_received_amount")
+    return fee, net, fee_details
+
+
 def _record_payment(payment: dict) -> None:
     if payment.get("status") != "approved":
         log.info("Pago no aprobado (status=%s) — ignorando", payment.get("status"))
@@ -182,6 +208,7 @@ def _record_payment(payment: dict) -> None:
     external_reference = payment.get("external_reference")
     payment_id = str(payment.get("id"))
     amount = payment.get("transaction_amount")
+    fee, net_received, fee_details = _fees_from_payment(payment)
     if not clerk_user_id or not external_reference:
         log.error("Pago aprobado sin metadata.clerk_user_id o external_reference: %s", payment_id)
         return
@@ -209,8 +236,9 @@ def _record_payment(payment: dict) -> None:
                 """
                 INSERT INTO subscriptions
                     (clerk_user_id, valid_from, valid_until,
-                     mp_payment_id, mp_external_reference, amount_ars)
-                VALUES (%s, %s, %s + (%s || ' days')::interval, %s, %s, %s)
+                     mp_payment_id, mp_external_reference, amount_ars,
+                     mp_fee_ars, mp_net_received_ars, mp_fee_details)
+                VALUES (%s, %s, %s + (%s || ' days')::interval, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (mp_external_reference) DO NOTHING
                 """,
                 (
@@ -221,6 +249,9 @@ def _record_payment(payment: dict) -> None:
                     payment_id,
                     external_reference,
                     amount,
+                    fee,
+                    net_received,
+                    Jsonb(fee_details) if fee_details else None,
                 ),
             )
         else:
@@ -228,8 +259,9 @@ def _record_payment(payment: dict) -> None:
                 """
                 INSERT INTO subscriptions
                     (clerk_user_id, valid_from, valid_until,
-                     mp_payment_id, mp_external_reference, amount_ars)
-                VALUES (%s, NOW(), NOW() + (%s || ' days')::interval, %s, %s, %s)
+                     mp_payment_id, mp_external_reference, amount_ars,
+                     mp_fee_ars, mp_net_received_ars, mp_fee_details)
+                VALUES (%s, NOW(), NOW() + (%s || ' days')::interval, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (mp_external_reference) DO NOTHING
                 """,
                 (
@@ -238,6 +270,9 @@ def _record_payment(payment: dict) -> None:
                     payment_id,
                     external_reference,
                     amount,
+                    fee,
+                    net_received,
+                    Jsonb(fee_details) if fee_details else None,
                 ),
             )
         conn.execute(

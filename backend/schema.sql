@@ -91,8 +91,18 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     mp_payment_id          TEXT UNIQUE,
     mp_external_reference  TEXT UNIQUE,
     amount_ars             NUMERIC(10, 2),
+    -- Comisión que se queda MP (suma de fee_details con fee_payer=collector) y
+    -- neto acreditado (transaction_details.net_received_amount). mp_fee_details
+    -- guarda el array crudo para desglosar después sin re-consultar la API de MP.
+    mp_fee_ars             NUMERIC(10, 2),
+    mp_net_received_ars    NUMERIC(10, 2),
+    mp_fee_details         JSONB,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mp_fee_ars NUMERIC(10, 2);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mp_net_received_ars NUMERIC(10, 2);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mp_fee_details JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_subs_user_until
     ON subscriptions(clerk_user_id, valid_until DESC);

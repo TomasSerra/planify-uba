@@ -9,7 +9,7 @@ import pytest
 
 from api.auth import AuthUser
 from api.me import me as me_handler
-from api.pagos import _record_payment, get_pago_status
+from api.pagos import _fees_from_payment, _record_payment, get_pago_status
 from api.subs import get_active_until, has_active_subscription
 
 
@@ -89,14 +89,19 @@ class TestMeEndpoint:
 
 # ----------------------------- _record_payment --------------------------------
 
-def _payment(status="approved", clerk_user_id="user-X", external_ref="ext-1", payment_id=12345, amount=3000, key="clerk_user_id"):
-    return {
+def _payment(status="approved", clerk_user_id="user-X", external_ref="ext-1", payment_id=12345, amount=3000, key="clerk_user_id", fee_details=None, net=None):
+    pago = {
         "id": payment_id,
         "status": status,
         "external_reference": external_ref,
         "transaction_amount": amount,
         "metadata": {key: clerk_user_id} if clerk_user_id else {},
     }
+    if fee_details is not None:
+        pago["fee_details"] = fee_details
+    if net is not None:
+        pago["transaction_details"] = {"net_received_amount": net}
+    return pago
 
 
 class TestRecordPayment:
@@ -174,6 +179,141 @@ class TestRecordPayment:
         _record_payment(_payment(key="clerkUserId"))
         sqls = [sql for sql, _ in fake_conn.executed]
         assert any("INSERT INTO subscriptions" in s for s in sqls)
+
+
+# ----------------------------- comisión de MP ---------------------------------
+
+class TestFeesFromPayment:
+    def test_suma_solo_fees_del_collector(self):
+        fee, net, raw = _fees_from_payment(
+            _payment(
+                fee_details=[
+                    {"type": "mercadopago_fee", "amount": 186.5, "fee_payer": "collector"},
+                    {"type": "application_fee", "amount": 13.5, "fee_payer": "collector"},
+                    # La financiación en cuotas la paga el comprador: no nos descuenta nada.
+                    {"type": "financing_fee", "amount": 500, "fee_payer": "payer"},
+                ],
+                net=2800.0,
+            )
+        )
+        assert fee == 200.0
+        assert net == 2800.0
+        assert len(raw) == 3
+
+    def test_sin_fee_details_devuelve_none(self):
+        # None ≠ 0: no queremos registrar "comisión cero" cuando MP no informó nada.
+        fee, net, raw = _fees_from_payment(_payment())
+        assert fee is None
+        assert net is None
+        assert raw is None
+
+    def test_fee_details_vacio_devuelve_none(self):
+        fee, _, raw = _fees_from_payment(_payment(fee_details=[]))
+        assert fee is None
+        assert raw is None
+
+    def test_solo_fees_del_payer_devuelve_cero(self):
+        # Hubo fee_details pero ninguna a nuestro cargo: 0 es el dato real.
+        fee, _, raw = _fees_from_payment(
+            _payment(fee_details=[{"type": "financing_fee", "amount": 500, "fee_payer": "payer"}])
+        )
+        assert fee == 0
+        assert raw is not None
+
+
+class TestRecordPaymentFees:
+    def _capture_insert(self, fake_conn):
+        captured = {}
+
+        def capture(sql, params):
+            if "INSERT INTO subscriptions" in sql:
+                captured["params"] = params
+
+        fake_conn.on("INSERT INTO subscriptions", rows=[], side_effect=capture)
+        return captured
+
+    def test_guarda_fee_y_neto_en_alta(self, monkeypatch, fake_pool, fake_conn):
+        monkeypatch.setattr("api.pagos.pool", fake_pool)
+        fake_conn.on("WHERE mp_payment_id", rows=[])
+        fake_conn.on("WHERE clerk_user_id = %s AND valid_until > NOW()", rows=[])
+        captured = self._capture_insert(fake_conn)
+        fake_conn.on("DELETE FROM pending_checkouts", rows=[])
+        _record_payment(
+            _payment(
+                fee_details=[{"type": "mercadopago_fee", "amount": 200.0, "fee_payer": "collector"}],
+                net=2800.0,
+            )
+        )
+        assert 200.0 in captured["params"]
+        assert 2800.0 in captured["params"]
+
+    def test_guarda_fee_y_neto_en_renovacion(self, monkeypatch, fake_pool, fake_conn):
+        monkeypatch.setattr("api.pagos.pool", fake_pool)
+        fake_conn.on("WHERE mp_payment_id", rows=[])
+        fake_conn.on(
+            "WHERE clerk_user_id = %s AND valid_until > NOW()",
+            rows=[{"valid_until": datetime(2030, 1, 1, tzinfo=timezone.utc)}],
+        )
+        captured = self._capture_insert(fake_conn)
+        fake_conn.on("DELETE FROM pending_checkouts", rows=[])
+        _record_payment(
+            _payment(
+                fee_details=[{"type": "mercadopago_fee", "amount": 200.0, "fee_payer": "collector"}],
+                net=2800.0,
+            )
+        )
+        assert 200.0 in captured["params"]
+        assert 2800.0 in captured["params"]
+
+    def test_guarda_fee_aunque_falte_el_neto(self, monkeypatch, fake_pool, fake_conn):
+        # Un campo nulo de MP no debe arrastrar a los otros: lo que vino se guarda.
+        monkeypatch.setattr("api.pagos.pool", fake_pool)
+        fake_conn.on("WHERE mp_payment_id", rows=[])
+        fake_conn.on("WHERE clerk_user_id = %s AND valid_until > NOW()", rows=[])
+        captured = self._capture_insert(fake_conn)
+        fake_conn.on("DELETE FROM pending_checkouts", rows=[])
+        _record_payment(
+            _payment(
+                fee_details=[{"type": "mercadopago_fee", "amount": 200.0, "fee_payer": "collector"}]
+            )
+        )
+        fee, net, raw = captured["params"][-3:]
+        assert fee == 200.0
+        assert net is None
+        assert raw is not None
+
+    def test_guarda_el_neto_aunque_falten_los_fee_details(self, monkeypatch, fake_pool, fake_conn):
+        monkeypatch.setattr("api.pagos.pool", fake_pool)
+        fake_conn.on("WHERE mp_payment_id", rows=[])
+        fake_conn.on("WHERE clerk_user_id = %s AND valid_until > NOW()", rows=[])
+        captured = self._capture_insert(fake_conn)
+        fake_conn.on("DELETE FROM pending_checkouts", rows=[])
+        _record_payment(_payment(net=2800.0))
+        fee, net, raw = captured["params"][-3:]
+        assert fee is None
+        assert net == 2800.0
+        assert raw is None
+
+    def test_amount_de_fee_nulo_no_rompe_la_suma(self):
+        fee, _, _ = _fees_from_payment(
+            _payment(
+                fee_details=[
+                    {"type": "mercadopago_fee", "amount": None, "fee_payer": "collector"},
+                    {"type": "application_fee", "amount": 50.0, "fee_payer": "collector"},
+                ]
+            )
+        )
+        assert fee == 50.0
+
+    def test_sin_fee_details_inserta_nulls(self, monkeypatch, fake_pool, fake_conn):
+        monkeypatch.setattr("api.pagos.pool", fake_pool)
+        fake_conn.on("WHERE mp_payment_id", rows=[])
+        fake_conn.on("WHERE clerk_user_id = %s AND valid_until > NOW()", rows=[])
+        captured = self._capture_insert(fake_conn)
+        fake_conn.on("DELETE FROM pending_checkouts", rows=[])
+        _record_payment(_payment())
+        # Los 3 últimos params son fee, neto y el JSON crudo.
+        assert captured["params"][-3:] == (None, None, None)
 
 
 # ----------------------------- /pagos/{ref}/status ----------------------------
