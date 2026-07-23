@@ -19,6 +19,8 @@ const STATIC_ROUTES = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/recomendaciones", changefreq: "daily", priority: "0.9" },
   { path: "/planes-estudio", changefreq: "monthly", priority: "0.7" },
+  { path: "/terminos", changefreq: "yearly", priority: "0.3" },
+  { path: "/privacidad", changefreq: "yearly", priority: "0.3" },
 ];
 
 function xml(urls) {

@@ -23,7 +23,7 @@ up:
 	@echo "  Frontend:  http://localhost:5173"
 	@echo "  API:       http://localhost:8000"
 	@echo "  Docs:      http://localhost:8000/docs"
-	@echo "  DB:        postgresql://postgres:postgres@localhost:5432/horarios"
+	@echo "  DB:        postgresql://postgres:postgres@localhost:5437/horarios"
 
 down:
 	$(DC) down

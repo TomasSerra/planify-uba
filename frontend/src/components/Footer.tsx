@@ -1,4 +1,5 @@
-import { Headset, Instagram, Mail } from "lucide-react";
+import { Headset, Instagram, Mail, Undo2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 export function TikTokIcon({ className }: { className?: string }) {
@@ -24,10 +25,17 @@ export function ContactLinks({
     <div
       className={cn(
         "flex text-xs text-muted-foreground",
-        vertical ? "flex-col gap-4" : "flex-col items-center gap-3 sm:flex-row sm:justify-between"
+        vertical
+          ? "flex-col gap-4"
+          : "flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-3",
       )}
     >
-      <div className={cn("flex", vertical ? "flex-col gap-3" : "items-center gap-4")}>
+      <div
+        className={cn(
+          "flex",
+          vertical ? "flex-col gap-3" : "items-center gap-4",
+        )}
+      >
         <a
           href="mailto:planify.uni@gmail.com"
           className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
@@ -42,6 +50,33 @@ export function ContactLinks({
           <Headset className="size-4" />
           Ayuda
         </a>
+      </div>
+      <div
+        className={cn(
+          "flex",
+          vertical
+            ? "flex-col items-start gap-3"
+            : "flex-wrap items-center gap-x-4 gap-y-2",
+        )}
+      >
+        <Link
+          to="/terminos"
+          className="transition-colors hover:text-foreground"
+        >
+          Términos y Condiciones
+        </Link>
+        <Link
+          to="/privacidad"
+          className="transition-colors hover:text-foreground"
+        >
+          Política de Privacidad
+        </Link>
+        <Link
+          to="/arrepentimiento"
+          className="transition-colors hover:text-foreground"
+        >
+          Arrepentimiento
+        </Link>
       </div>
       <div className="flex items-center gap-4">
         <a

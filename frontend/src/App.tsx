@@ -5,6 +5,9 @@ import { Favoritos } from "./pages/Favoritos";
 import { PlanesEstudio } from "./pages/PlanesEstudio";
 import { Catedras } from "./pages/Catedras";
 import { CatedraReviews } from "./pages/CatedraReviews";
+import { Terminos } from "./pages/Terminos";
+import { Privacidad } from "./pages/Privacidad";
+import { Arrepentimiento } from "./pages/Arrepentimiento";
 import { PaywallProvider } from "./components/PaywallProvider";
 import { CareerProvider } from "./components/CareerProvider";
 import { Footer } from "./components/Footer";
@@ -31,6 +34,9 @@ export default function App() {
           <Route path="/recomendaciones" element={<Catedras />} />
           <Route path="/catedras" element={<Navigate to="/recomendaciones" replace />} />
           <Route path="/catedras/:catedraId" element={<CatedraReviews />} />
+          <Route path="/terminos" element={<Terminos />} />
+          <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/arrepentimiento" element={<Arrepentimiento />} />
           {/* MP redirige acá tras éxito o falla. Home detecta la ruta, abre el
               dialog correspondiente, y limpia la URL a "/". */}
           <Route path="/pago-exitoso" element={<Home />} />
